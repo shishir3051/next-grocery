@@ -53,17 +53,12 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
         <div className="relative location-picker hidden lg:block flex-shrink-0">
           <button
             onClick={() => setIsLocationModalOpen(true)}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[#ED1C24] hover:bg-[#D4181E] text-white transition-all shadow-md shadow-red-100 group border-r border-red-700/30"
+            className="flex items-center gap-3 px-3 py-1.5 rounded bg-[#D90000] hover:bg-[#B30000] text-white transition-all border border-white/40 shadow-sm"
           >
-            <div className="p-2 bg-white/10 rounded-lg">
-              <Truck size={20} className="text-white fill-white/20" />
-            </div>
-            <div className="flex flex-col items-start leading-tight">
-              <span className="text-[10px] font-bold text-white/80 uppercase tracking-tight">Today: 9AM - 11AM</span>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-black truncate max-w-[120px]">{location}</span>
-                <ChevronDown size={14} className="text-white/70 group-hover:text-white transition-colors" />
-              </div>
+            <Truck size={24} className="text-white flex-shrink-0" strokeWidth={1.5} />
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[12px] font-bold text-white mb-[2px]">Today: 9AM - 10AM</span>
+              <span className="text-[13px] font-medium text-white/95 truncate max-w-[200px] leading-none">{location}</span>
             </div>
           </button>
         </div>

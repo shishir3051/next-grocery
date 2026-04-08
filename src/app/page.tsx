@@ -75,6 +75,33 @@ export default function HomePage() {
       .then(r => r.json())
       .then(data => setCategories(data?.categories || []))
       .catch(console.error);
+      
+    // Load persisted location or Auto-Prompt
+    const savedLoc = localStorage.getItem('userLocation');
+    if (savedLoc) {
+      setLocation(savedLoc);
+    } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      // Auto-prompt location on very first visit
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=en`);
+            const data = await res.json();
+            if (data && (data.locality || data.city)) {
+              const cityName = data.city || data.principalSubdivision || 'Dhaka';
+              const localArea = data.locality || '';
+              const locStr = localArea && cityName !== localArea ? `${localArea}, ${cityName}` : cityName;
+              setLocation(locStr);
+              localStorage.setItem('userLocation', locStr);
+            }
+          } catch (e) {
+            console.error("Auto location fetch failed");
+          }
+        },
+        (err) => console.warn("Auto location denied by user"),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
   }, []);
 
   // Fetch products when activeSlug changes
@@ -148,7 +175,10 @@ export default function HomePage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         location={location}
-        onLocationChange={setLocation}
+        onLocationChange={(loc) => {
+          setLocation(loc);
+          localStorage.setItem('userLocation', loc);
+        }}
         onMenuToggle={() => setIsMobileMenuOpen(p => !p)}
         isMobileMenuOpen={isMobileMenuOpen}
       />

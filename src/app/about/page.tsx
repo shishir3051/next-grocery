@@ -4,8 +4,28 @@ import { motion } from "framer-motion";
 import { ShoppingBasket, ShieldCheck, Truck, Users, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function AboutPage() {
+  const [stats, setStats] = useState({ customers: null as number | null, cities: null as number | null, products: null as number | null });
+
+  useEffect(() => {
+    fetch('/api/stats/public')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error && data.customers !== undefined) {
+          setStats({ customers: data.customers, cities: data.cities, products: data.products });
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const formatStat = (num: number | null, fallback: string) => {
+    if (num === null) return fallback;
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k+';
+    if (num >= 10) return num + '+';
+    return num;
+  };
   const values = [
     {
       icon: <ShoppingBasket className="text-teal-600" size={32} />,
@@ -63,22 +83,28 @@ export default function AboutPage() {
             </p>
             <div className="flex gap-8 pt-4">
               <div>
-                <p className="text-3xl font-black text-teal-600">50k+</p>
+                <p className="text-3xl font-black text-teal-600">
+                  {stats.customers === null ? '...' : formatStat(stats.customers, '0')}
+                </p>
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Customers</p>
               </div>
               <div>
-                <p className="text-3xl font-black text-teal-600">10+</p>
+                <p className="text-3xl font-black text-teal-600">
+                  {stats.cities === null ? '...' : formatStat(stats.cities, '0')}
+                </p>
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Cities</p>
               </div>
               <div>
-                <p className="text-3xl font-black text-teal-600">5k+</p>
+                <p className="text-3xl font-black text-teal-600">
+                  {stats.products === null ? '...' : formatStat(stats.products, '0')}
+                </p>
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Products</p>
               </div>
             </div>
           </div>
           <div className="relative h-[500px] rounded-[3rem] overflow-hidden shadow-2xl">
              <Image 
-              src="https://images.unsplash.com/photo-1574630810557-7ef66bca5010?q=80&w=1000" 
+              src="/images/team.png" 
               alt="Grocery Team" 
               fill 
               className="object-cover"

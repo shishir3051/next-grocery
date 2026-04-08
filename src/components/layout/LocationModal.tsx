@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, Search, Crosshair, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import DynamicMap from '../map/DynamicMap';
 
 const DISTRICTS = ['Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Cumilla'];
 const AREAS: Record<string, string[]> = {
@@ -22,6 +23,8 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
   const [district, setDistrict] = useState('Dhaka');
   const [area, setArea] = useState('');
   const [search, setSearch] = useState('');
+  const [mapCenter, setMapCenter] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
   const [isManualMode, setIsManualMode] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -29,11 +32,9 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
     setMounted(true);
   }, []);
 
-  // Reset to search mode when modal closes
+  // Reset mode when opened
   useEffect(() => {
-    if (!isOpen) {
-      setIsManualMode(false);
-    }
+    if (isOpen) setIsManualMode(false);
   }, [isOpen]);
 
   if (!isOpen || !mounted) return null;
@@ -41,27 +42,104 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
   const handleDone = () => {
     if (area) {
       onLocationChange(`${area}, ${district}`);
-    } else {
+    } else if (district) {
       onLocationChange(district);
+    } else if (search) {
+      onLocationChange(search);
     }
     onClose();
   };
 
+  const resolveLocationData = (data: any) => {
+    if (data && (data.locality || data.city)) {
+      const cityName = data.city || data.principalSubdivision || 'Dhaka';
+      const localArea = data.locality || '';
+      const locationString = localArea && cityName !== localArea ? `${localArea}, ${cityName}` : cityName;
+      
+      setSearch(locationString);
+      
+      if (cityName) {
+        const matchedDistrict = DISTRICTS.find(d => cityName.includes(d) || d.includes(cityName));
+        if (matchedDistrict) {
+           setDistrict(matchedDistrict);
+           if (localArea && AREAS[matchedDistrict]) {
+             const cleanArea = localArea.replace(/ /g, '');
+             const matchedArea = AREAS[matchedDistrict].find(a => 
+               cleanArea.toLowerCase().includes(a.toLowerCase()) || 
+               a.toLowerCase().includes(cleanArea.toLowerCase())
+             );
+             if (matchedArea) setArea(matchedArea);
+           }
+        }
+      }
+    } else {
+      setSearch(`Unknown Area`);
+    }
+  };
+
+  const fetchIPFallback = async () => {
+    try {
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en`);
+      const data = await res.json();
+      if (data.latitude && data.longitude) {
+        setMapCenter(`${data.latitude},${data.longitude}`);
+      }
+      resolveLocationData(data);
+    } catch (e) {
+      setSearch('Location Detection Failed');
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleMarkerDragEnd = async (lat: number, lng: number) => {
+    setMapCenter(`${lat},${lng}`);
+    setIsLocating(true);
+    setSearch('Locating Area...');
+    try {
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      const data = await res.json();
+      resolveLocationData(data);
+    } catch (e) {
+      setSearch('Location Detection Failed');
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const activeCenter: [number, number] = mapCenter 
+    ? [parseFloat(mapCenter.split(',')[0]), parseFloat(mapCenter.split(',')[1])]
+    : [23.8103, 90.4125]; // Default Dhaka center
+
   const handleGeoLocation = () => {
+    setIsLocating(true);
+    setSearch('Locating...');
+
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      fetchIPFallback();
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setSearch(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          setMapCenter(`${latitude},${longitude}`);
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+          const data = await res.json();
+          resolveLocationData(data);
+        } catch (error) {
+          console.error("Reverse geocoding failed", error);
+          setSearch(`Location Detected`);
+        } finally {
+          setIsLocating(false);
+        }
       },
       (error) => {
-        console.error("Geolocation error:", error);
-        alert("Unable to retrieve your location. Please check your browser permissions.");
-      }
+        console.warn("GPS failed, falling back to IP API");
+        fetchIPFallback();
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -81,82 +159,70 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ minHeight: '500px', maxHeight: '90vh' }}
       >
         {/* Header */}
-        <div className="text-center py-5 relative border-b border-slate-100 flex-shrink-0">
+        <div className="text-center py-4 relative border-b border-slate-100 flex-shrink-0 bg-white z-10">
           <h2 className="text-xl font-bold text-slate-800 flex items-center justify-center gap-2">
-            <MapPin size={22} className="text-slate-600" />
+            <MapPin size={22} className="text-slate-800" strokeWidth={2.5} />
             Delivery Location
           </h2>
-          <button 
-            onClick={onClose}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-all"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="p-6 overflow-y-auto">
-          {/* Map Area Container */}
-          <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 mb-6 flex flex-col group">
-            {/* Live Interactive Map Iframe */}
-            <iframe
-              src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                (search ? search + ', ' : '') + 
-                (area ? area + ', ' : '') + 
-                district + ', Bangladesh'
-              )}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              style={{ border: 0, filter: 'contrast(1.1) brightness(1.05)' }}
-              allowFullScreen
-              className="absolute inset-0 w-full h-full z-0"
-            />
-            
-            {/* Search Bar Overlay - Higher Z-Index to remain clickable */}
-            <div className="absolute top-3 left-3 right-3 flex items-center shadow-lg rounded-lg overflow-hidden border border-slate-200 z-20">
-              <div className="flex-1 flex items-center bg-white px-3 py-2.5 gap-2">
-                <Search size={18} className="text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search delivery location"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full text-sm outline-none font-medium placeholder-slate-400 text-slate-700"
-                />
-                {search && (
-                  <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600">
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-              <button 
-                onClick={handleGeoLocation}
-                className="bg-[#ED1C24] hover:bg-[#D4181E] text-white p-3 flex-shrink-0 transition-colors"
-                title="Use current location"
-              >
-                <Crosshair size={20} />
-              </button>
-            </div>
+        <div className="flex-1 flex flex-col relative bg-slate-50">
+          {!isManualMode ? (
+            // MAP MODE (Matching Screenshot Exactly)
+            <div className="absolute inset-0 flex flex-col">
+              {/* Interactive Leaflet Map */}
+              <DynamicMap 
+                center={activeCenter}
+                onMarkerDragEnd={handleMarkerDragEnd}
+              />
 
-            {/* Visual Center Pin Overlay */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-md pointer-events-none z-10 transition-transform group-hover:-translate-y-4 duration-300">
-              <div className="w-10 h-10 bg-[#ED1C24] rounded-full flex items-center justify-center border-4 border-white text-white font-bold text-[10px] shadow-xl animate-pulse">
-                PIN
+              {/* Top Search Overlay */}
+              <div className="absolute top-4 left-4 right-4 z-20 flex bg-white rounded shadow-lg overflow-hidden border border-slate-200">
+                <div className="flex-1 flex items-center px-3 py-2.5 gap-2">
+                  <Search size={18} className="text-slate-500 flex-shrink-0" />
+                  <input 
+                    type="text" 
+                    placeholder="Search delivery location"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setMapCenter('');
+                    }}
+                    className="w-full text-sm outline-none font-medium placeholder-slate-400 text-slate-700 bg-transparent"
+                  />
+                  {search && (
+                    <button onClick={() => {
+                        setSearch('');
+                        setMapCenter('');
+                      }} 
+                      className="text-slate-400 hover:text-slate-600 flex-shrink-0 px-1"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Crosshair Button */}
+                <button 
+                  onClick={handleGeoLocation}
+                  disabled={isLocating}
+                  className={`bg-[#CC0000] hover:bg-[#A30000] text-white px-3.5 py-3 flex items-center justify-center transition-all ${isLocating ? 'opacity-80' : ''}`}
+                >
+                  <Crosshair size={20} className={isLocating ? 'animate-spin' : ''} />
+                </button>
               </div>
-              <div className="w-1.5 h-6 bg-[#ED1C24] mx-auto -mt-1 rounded-b-full shadow-xl" />
-              <div className="w-4 h-1.5 bg-black/30 rounded-[50%] mx-auto mt-[1px] blur-[1px]" />
-            </div>
 
-            {/* Bottom Primary Actions Overlay - Initial Mode Only */}
-            {!isManualMode && (
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3 px-3 z-20">
+              {/* Removed Static Pin because Leaflet Marker takes its place */}
+
+              {/* Bottom Action Buttons (Pills) */}
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 px-4 z-20 pointer-events-none">
                 <button 
                   onClick={() => setIsManualMode(true)}
-                  className="bg-[#ED1C24] hover:bg-[#D4181E] text-white text-sm font-bold px-6 py-2.5 rounded-full shadow-lg transition-all active:scale-95"
+                  className="bg-[#CC0000] hover:bg-[#A30000] text-white font-bold px-6 py-2.5 rounded-full shadow-lg transition-transform active:scale-95 border-2 border-white/20 pointer-events-auto"
                 >
                   Manual Input
                 </button>
@@ -166,33 +232,29 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
                     else handleDone();
                     onClose();
                   }}
-                  className="bg-[#FFD500] hover:bg-[#F2CA00] text-slate-900 text-sm font-bold px-6 py-2.5 rounded-full shadow-lg transition-all active:scale-95"
+                  className="bg-[#FFD500] hover:bg-[#F2CA00] text-slate-900 font-bold px-6 py-2.5 rounded-full shadow-lg transition-transform active:scale-95 pointer-events-auto"
                 >
                   Confirm Location
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Manual Mode Elements */}
-          {isManualMode && (
+            </div>
+          ) : (
+            // MANUAL MODE (Dropdowns)
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex-1 flex flex-col p-6 absolute inset-0 bg-white z-30"
             >
-              {/* OR Divider */}
-              <div className="flex items-center justify-center mb-6 relative">
-                <div className="absolute inset-0 flex items-center text-slate-200">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex items-center justify-center bg-white px-4 text-xs font-bold text-slate-400 border border-slate-200 rounded-full py-1 uppercase tracking-wider">
-                  OR
-                </div>
-              </div>
-
-              {/* Dropdowns */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <button 
+                onClick={() => setIsManualMode(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 rounded-full p-2 bg-slate-100"
+              >
+                <X size={20} />
+              </button>
+              
+              <h3 className="text-sm font-bold text-slate-500 tracking-wider uppercase mb-6 mt-4">Select Manually</h3>
+              
+              <div className="flex flex-col gap-4">
                 <div className="relative">
                   <select 
                     value={district}
@@ -200,43 +262,49 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
                       setDistrict(e.target.value);
                       setArea(''); 
                     }}
-                    className="w-full appearance-none bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-bold cursor-pointer"
+                    className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-base rounded-xl px-4 py-3.5 outline-none focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] font-bold cursor-pointer transition-all"
                   >
-                    <option value="" disabled>District</option>
+                    <option value="" disabled>Select City</option>
                     {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
-                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
+
                 <div className="relative">
                   <select 
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     disabled={!district || !AREAS[district]}
-                    className="w-full appearance-none bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-bold cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-base rounded-xl px-4 py-3.5 outline-none focus:border-[#CC0000] focus:ring-1 focus:ring-[#CC0000] font-bold cursor-pointer transition-all disabled:opacity-50"
                   >
-                    <option value="">Area</option>
+                    <option value="">Select Area</option>
                     {district && AREAS[district]?.map(a => <option key={a} value={a}>{a}</option>)}
                   </select>
-                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
-              {/* Final Done Button */}
-              <button 
-                onClick={handleDone}
-                className="w-full bg-[#FFD500] hover:bg-[#F2CA00] text-slate-900 font-bold py-4 rounded-xl shadow-sm transition-all text-base tracking-wide"
-              >
-                Done
-              </button>
+              <div className="mt-auto pt-6 flex gap-4">
+                <button 
+                  onClick={() => setIsManualMode(false)}
+                  className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-xl transition-all"
+                >
+                  Back to Map
+                </button>
+                <button 
+                  onClick={handleDone}
+                  className="w-2/3 bg-[#FFD500] hover:bg-[#F2CA00] text-slate-900 font-bold py-3.5 rounded-xl shadow-md transition-all text-lg"
+                >
+                  Done
+                </button>
+              </div>
             </motion.div>
           )}
         </div>
-        
-        {/* Decorative Brand Bottom Bar */}
-        <div className="h-2 bg-gradient-to-r from-[#ED1C24] via-orange-400 to-[#FFD500] w-full flex-shrink-0" />
       </motion.div>
     </div>
   );
 
   return createPortal(modalContent, typeof document !== 'undefined' ? document.body : ({} as any));
 }
+
