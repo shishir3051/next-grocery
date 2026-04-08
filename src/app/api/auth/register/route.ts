@@ -5,7 +5,7 @@ import { User } from "@/models/User";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, referralCode } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -36,6 +36,16 @@ export async function POST(request: NextRequest) {
       existingUser.otpExpiry = otpExpiry;
       existingUser.password = hashedPassword;
       existingUser.name = name;
+      
+      let referredById = null;
+      if (referralCode) {
+        const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
+        if (referrer) referredById = referrer._id;
+      }
+      if (referredById && !existingUser.referredBy) {
+        existingUser.referredBy = referredById;
+      }
+      
       await existingUser.save();
       
       // Import here to avoid issues if email.ts is imported globally and fails
@@ -48,6 +58,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let referredById = null;
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
+      if (referrer) referredById = referrer._id;
+    }
+
+    const newReferralCode = `FRESH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
     // Create new unverified user
     await User.create({
       name,
@@ -56,6 +74,8 @@ export async function POST(request: NextRequest) {
       isVerified: false,
       verificationOtp: otp,
       otpExpiry,
+      referralCode: newReferralCode,
+      referredBy: referredById,
     });
 
     const { sendOTP } = await import('@/lib/email');

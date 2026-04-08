@@ -23,8 +23,4 @@ const UserSchema = new Schema({
   referralRewarded: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// Delete cached model to ensure schema changes (like OTP fields) are always applied
-if (models.User) {
-  delete (mongoose.connection.models as any)['User'];
-}
 export const User = models.User || model('User', UserSchema);

@@ -50,6 +50,19 @@ export async function POST(request: NextRequest) {
     user.isVerified = true;
     user.verificationOtp = null;
     user.otpExpiry = null;
+
+    // 💸 Referral Reward System
+    if (user.referredBy && !user.referralRewarded) {
+      user.walletBalance = (user.walletBalance || 0) + 50;
+      user.referralRewarded = true;
+      
+      const referrer = await User.findById(user.referredBy);
+      if (referrer) {
+        referrer.walletBalance = (referrer.walletBalance || 0) + 50;
+        await referrer.save();
+      }
+    }
+
     await user.save();
 
     return NextResponse.json(
