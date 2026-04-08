@@ -23,17 +23,8 @@ const UserSchema = new Schema({
   referralRewarded: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// Auto-generate referral code pre-save if not exists
-UserSchema.pre('save', function(next) {
-  if (this.isNew && !this.referralCode) {
-    const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-    this.referralCode = `FRESH-${randomStr}`;
-  }
-  next();
-});
-
 // Delete cached model to ensure schema changes (like OTP fields) are always applied
 if (models.User) {
-  delete mongoose.connection.models['User'];
+  delete (mongoose.connection.models as any)['User'];
 }
-export const User = model('User', UserSchema);
+export const User = models.User || model('User', UserSchema);

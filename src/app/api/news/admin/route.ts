@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from '@/lib/mongodb';
 import { News } from '@/models/News';
-import { slugify } from '@/lib/utils'; // Assuming this exists or I'll add it
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
