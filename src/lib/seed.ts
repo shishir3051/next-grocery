@@ -77,142 +77,63 @@ const categories = [
 
 const products = [
   // Vegetables
-  {
-    name: 'Potato Regular', slug: 'potato-regular', description: 'High-quality regular potatoes.', price: 45, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Potato', categorySlug: 'fresh-vegetables',
-  },
-  {
-    name: 'Red Tomato', slug: 'red-tomato', description: 'Fresh and juicy red tomatoes.', price: 60, unit: '500 gm', image: 'https://placehold.co/400x400/png?text=Tomato', categorySlug: 'fresh-vegetables',
-  },
-  {
-    name: 'Local Onion (Deshi)', slug: 'local-onion-deshi', description: 'Flavorful local red onions.', price: 85, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Onion', categorySlug: 'fresh-vegetables',
-  },
-  {
-    name: 'Green Chili', slug: 'green-chili', description: 'Fresh and spicy green chilies.', price: 40, unit: '250 gm', image: 'https://placehold.co/400x400/png?text=Green+Chili', categorySlug: 'fresh-vegetables',
-  },
-  {
-    name: 'Cucumber', slug: 'cucumber', description: 'Farm fresh crispy cucumber.', price: 30, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Cucumber', categorySlug: 'fresh-vegetables',
-  },
-  {
-    name: 'Carrot', slug: 'carrot', description: 'Fresh orange carrots.', price: 50, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Carrot', categorySlug: 'fresh-vegetables',
-  },
-  {
-    name: 'Lemon', slug: 'lemon', description: 'Fresh sour lemons.', price: 20, unit: '4 pcs', image: 'https://placehold.co/400x400/png?text=Lemon', categorySlug: 'fresh-vegetables',
-  },
-  
+  { name: 'Potato Regular', slug: 'potato-regular', description: 'High-quality regular potatoes sourced from local farms.', price: 45, discountPrice: 40, unit: '1 kg', image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Red Tomato', slug: 'red-tomato', description: 'Fresh and juicy red tomatoes, perfect for salads and curries.', price: 60, unit: '500 gm', image: 'https://images.unsplash.com/photo-1561136594-7f68413baa99?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Local Onion (Deshi)', slug: 'local-onion-deshi', description: 'Flavorful local deshi red onions for everyday cooking.', price: 85, unit: '1 kg', image: 'https://images.unsplash.com/photo-1508747703725-719777637510?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Green Chili', slug: 'green-chili', description: 'Fresh and spicy green chilies, hand-picked daily.', price: 40, unit: '250 gm', image: 'https://images.unsplash.com/photo-1526346698789-22fd84314424?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Cucumber', slug: 'cucumber', description: 'Farm fresh crispy cucumber, great for salads.', price: 30, unit: '1 kg', image: 'https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Carrot', slug: 'carrot', description: 'Fresh orange carrots, rich in beta-carotene.', price: 50, unit: '1 kg', image: 'https://images.unsplash.com/photo-1445282768818-728615cc910a?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Lemon', slug: 'lemon', description: 'Fresh sour lemons, perfect for drinks and cooking.', price: 20, unit: '4 pcs', image: 'https://images.unsplash.com/photo-1547514701-42782101795e?w=400&q=80', categorySlug: 'fresh-vegetables' },
+  { name: 'Broccoli', slug: 'broccoli', description: 'Farm fresh green broccoli, packed with nutrients and vitamins.', price: 120, unit: '500 gm', image: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?w=400&q=80', categorySlug: 'fresh-vegetables' },
+
   // Fruits
-  {
-    name: 'Gala Apples', slug: 'gala-apples', description: 'Sweet and crunchy Gala apples.', price: 320, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Apple', categorySlug: 'fresh-fruits',
-  },
-  {
-    name: 'Sagar Banana', slug: 'sagar-banana', description: 'Sweet local Sagar Bananas.', price: 60, unit: '4 pcs', image: 'https://placehold.co/400x400/png?text=Banana', categorySlug: 'fresh-fruits',
-  },
-  {
-    name: 'Sweet Orange (Malta)', slug: 'sweet-orange', description: 'Imported sweet oranges.', price: 220, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Orange', categorySlug: 'fresh-fruits',
-  },
-  {
-    name: 'Pomegranate', slug: 'pomegranate', description: 'Fresh red pomegranate.', price: 350, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Pomegranate', categorySlug: 'fresh-fruits',
-  },
-  {
-    name: 'Green Grapes', slug: 'green-grapes', description: 'Sweet green grapes.', price: 250, unit: '500 gm', image: 'https://placehold.co/400x400/png?text=Grapes', categorySlug: 'fresh-fruits',
-  },
+  { name: 'Gala Apples', slug: 'gala-apples', description: 'Sweet and crunchy imported Gala apples.', price: 320, discountPrice: 280, unit: '1 kg', image: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=400&q=80', categorySlug: 'fresh-fruits' },
+  { name: 'Sagar Banana', slug: 'sagar-banana', description: 'Sweet local Sagar Bananas, naturally ripened.', price: 60, unit: '4 pcs', image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&q=80', categorySlug: 'fresh-fruits' },
+  { name: 'Sweet Orange (Malta)', slug: 'sweet-orange', description: 'Juicy imported oranges, bursting with Vitamin C.', price: 220, unit: '1 kg', image: 'https://images.unsplash.com/photo-1547514701-42782101795e?w=400&q=80', categorySlug: 'fresh-fruits' },
+  { name: 'Pomegranate', slug: 'pomegranate', description: 'Fresh ruby red pomegranate, antioxidant-rich superfood.', price: 350, unit: '1 kg', image: 'https://images.unsplash.com/photo-1541344999736-83eca272f6fc?w=400&q=80', categorySlug: 'fresh-fruits' },
+  { name: 'Green Grapes', slug: 'green-grapes', description: 'Sweet seedless green grapes, freshly imported.', price: 250, discountPrice: 220, unit: '500 gm', image: 'https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=400&q=80', categorySlug: 'fresh-fruits' },
+  { name: 'Watermelon', slug: 'watermelon', description: 'Fresh summer watermelon, sweet and very hydrating.', price: 80, unit: '1 pc (approx 2kg)', image: 'https://images.unsplash.com/photo-1563114773-84221bd62daa?w=400&q=80', categorySlug: 'fresh-fruits' },
 
   // Dairy & Eggs
-  {
-    name: 'Aarong Fresh Pasteurized Milk', slug: 'aarong-milk', description: 'Pure and fresh pasteurized milk.', price: 90, unit: '1 liter', image: 'https://placehold.co/400x400/png?text=Milk', categorySlug: 'milk',
-  },
-  {
-    name: 'Farm Fresh Brown Eggs', slug: 'brown-eggs', description: 'Premium quality brown eggs.', price: 155, unit: '12 pcs', image: 'https://placehold.co/400x400/png?text=Brown+Eggs', categorySlug: 'eggs',
-  },
-  {
-    name: 'Deshi Chicken Eggs', slug: 'deshi-eggs', description: 'Local deshi chicken eggs.', price: 90, unit: '6 pcs', image: 'https://placehold.co/400x400/png?text=Deshi+Eggs', categorySlug: 'eggs',
-  },
-  {
-    name: 'Aarong Salted Butter', slug: 'aarong-butter', description: 'Fresh salted butter.', price: 220, unit: '200 gm', image: 'https://placehold.co/400x400/png?text=Butter', categorySlug: 'butter-cheese',
-  },
-  {
-    name: 'Mozzarella Cheese block', slug: 'mozzarella-cheese', description: 'Imported pizza cheese.', price: 380, unit: '200 gm', image: 'https://placehold.co/400x400/png?text=Cheese', categorySlug: 'butter-cheese',
-  },
+  { name: 'Aarong Fresh Pasteurized Milk', slug: 'aarong-milk', description: 'Pure and fresh pasteurized milk from Aarong Dairy.', price: 90, unit: '1 liter', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&q=80', categorySlug: 'milk' },
+  { name: 'Farm Fresh Brown Eggs', slug: 'brown-eggs', description: 'Premium quality cage-free brown eggs, freshly sourced.', price: 155, unit: '12 pcs', image: 'https://images.unsplash.com/photo-1612257416648-f1de5b80bfb6?w=400&q=80', categorySlug: 'eggs' },
+  { name: 'Deshi Chicken Eggs', slug: 'deshi-eggs', description: 'Local free-range deshi chicken eggs with richer yolk.', price: 90, unit: '6 pcs', image: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?w=400&q=80', categorySlug: 'eggs' },
+  { name: 'Aarong Salted Butter', slug: 'aarong-butter', description: 'Rich and creamy salted butter from Aarong Dairy.', price: 220, unit: '200 gm', image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&q=80', categorySlug: 'butter-cheese' },
+  { name: 'Mozzarella Cheese Block', slug: 'mozzarella-cheese', description: 'High-quality imported mozzarella, perfect for pizza.', price: 380, unit: '200 gm', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&q=80', categorySlug: 'butter-cheese' },
 
   // Cooking
-  {
-    name: 'Miniket Rice (Premium)', slug: 'miniket-rice', description: 'Premium quality Miniket rice.', price: 350, unit: '5 kg', image: 'https://placehold.co/400x400/png?text=Rice', categorySlug: 'rice',
-  },
-  {
-    name: 'Basmati Rice', slug: 'basmati-rice', description: 'Long grain Basmati rice.', price: 320, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Basmati', categorySlug: 'rice',
-  },
-  {
-    name: 'Rupchanda Soybean Oil', slug: 'soybean-oil', description: 'Healthy and fortified soybean oil.', price: 170, unit: '1 liter', image: 'https://placehold.co/400x400/png?text=Soybean+Oil', categorySlug: 'oil',
-  },
-  {
-    name: 'Radhuni Mustard Oil', slug: 'mustard-oil', description: 'Pure mustard oil.', price: 240, unit: '1 liter', image: 'https://placehold.co/400x400/png?text=Mustard+Oil', categorySlug: 'oil',
-  },
-  {
-    name: 'Radhuni Turmeric Powder', slug: 'turmeric-powder', description: 'Quality turmeric powder.', price: 70, unit: '200 gm', image: 'https://placehold.co/400x400/png?text=Turmeric', categorySlug: 'spices',
-  },
-  {
-    name: 'Radhuni Chili Powder', slug: 'chili-powder', description: 'Hot chili powder.', price: 80, unit: '200 gm', image: 'https://placehold.co/400x400/png?text=Chili+Powder', categorySlug: 'spices',
-  },
-  {
-    name: 'Fresh Salt', slug: 'fresh-salt', description: 'Iodized salt.', price: 40, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Salt', categorySlug: 'spices',
-  },
+  { name: 'Miniket Rice (Premium)', slug: 'miniket-rice', description: 'Premium quality aromatic Miniket rice, polished grain.', price: 350, unit: '5 kg', image: 'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=400&q=80', categorySlug: 'rice' },
+  { name: 'Basmati Rice', slug: 'basmati-rice', description: 'Long grain fragrant Basmati rice, imported quality.', price: 320, discountPrice: 295, unit: '1 kg', image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&q=80', categorySlug: 'rice' },
+  { name: 'Rupchanda Soybean Oil', slug: 'soybean-oil', description: 'Healthy vitamin-fortified soybean cooking oil.', price: 170, unit: '1 liter', image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&q=80', categorySlug: 'oil' },
+  { name: 'Radhuni Mustard Oil', slug: 'mustard-oil', description: '100% pure cold-pressed mustard oil.', price: 240, unit: '1 liter', image: 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=400&q=80', categorySlug: 'oil' },
+  { name: 'Radhuni Turmeric Powder', slug: 'turmeric-powder', description: 'Fresh ground turmeric with vibrant yellow color.', price: 70, unit: '200 gm', image: 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=400&q=80', categorySlug: 'spices' },
+  { name: 'Radhuni Chili Powder', slug: 'chili-powder', description: 'Hot and flavorful red chili powder for curries.', price: 80, unit: '200 gm', image: 'https://images.unsplash.com/photo-1598456668200-00c2af4d89b7?w=400&q=80', categorySlug: 'spices' },
+  { name: 'Fresh Salt', slug: 'fresh-salt', description: 'Pure iodized table salt.', price: 40, unit: '1 kg', image: 'https://images.unsplash.com/photo-1584990347449-a5d9f800a783?w=400&q=80', categorySlug: 'spices' },
 
   // Meat & Fish
-  {
-    name: 'Chicken Broiler (Skin Off)', slug: 'chicken-broiler', description: 'Fresh broiler chicken.', price: 210, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Chicken', categorySlug: 'chicken',
-  },
-  {
-    name: 'Deshi Chicken', slug: 'deshi-chicken', description: 'Fresh local chicken.', price: 550, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Deshi+Chicken', categorySlug: 'chicken',
-  },
-  {
-    name: 'Beef Boneless', slug: 'beef-boneless', description: 'Fresh boneless beef.', price: 850, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Beef', categorySlug: 'beef',
-  },
-  {
-    name: 'Ruhi Fish', slug: 'ruhi-fish', description: 'Fresh Ruhi fish whole.', price: 450, unit: '1 kg', image: 'https://placehold.co/400x400/png?text=Ruhi+Fish', categorySlug: 'fish',
-  },
-  {
-    name: 'Hilsha Fish (Ilish)', slug: 'hilsha-fish', description: 'Fresh Hilsha fish.', price: 1200, unit: '1 pc (800g)', image: 'https://placehold.co/400x400/png?text=Hilsha', categorySlug: 'fish',
-  },
-  
+  { name: 'Chicken Broiler (Skin Off)', slug: 'chicken-broiler', description: 'Fresh cleaned broiler chicken, skinless and halal.', price: 210, unit: '1 kg', image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&q=80', categorySlug: 'chicken' },
+  { name: 'Deshi Chicken', slug: 'deshi-chicken', description: 'Fresh free-range local deshi chicken, more flavorful.', price: 550, unit: '1 kg', image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c1?w=400&q=80', categorySlug: 'chicken' },
+  { name: 'Beef Boneless', slug: 'beef-boneless', description: 'Fresh premium boneless beef, freshly cut and cleaned.', price: 850, unit: '1 kg', image: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=400&q=80', categorySlug: 'beef' },
+  { name: 'Ruhi Fish', slug: 'ruhi-fish', description: 'Fresh river Ruhi fish, cleaned and cut to order.', price: 450, unit: '1 kg', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80', categorySlug: 'fish' },
+  { name: 'Hilsha Fish (Ilish)', slug: 'hilsha-fish', description: 'The national fish of Bangladesh. Premium fresh Hilsha.', price: 1200, unit: '1 pc (800g)', image: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=400&q=80', categorySlug: 'fish' },
+
   // Snacks & Sweets
-  {
-    name: 'Oreo Biscuits', slug: 'oreo-biscuits', description: 'Chocolate sandwich biscuits.', price: 60, unit: '120 gm', image: 'https://placehold.co/400x400/png?text=Oreo', categorySlug: 'biscuits',
-  },
-  {
-    name: 'Energy Plus Biscuit', slug: 'energy-plus', description: 'Healthy wheat biscuits.', price: 40, unit: '150 gm', image: 'https://placehold.co/400x400/png?text=Biscuits', categorySlug: 'biscuits',
-  },
-  {
-    name: 'Lays Classic Potato Chips', slug: 'lays-classic', description: 'Salty classic potato chips.', price: 50, unit: '50 gm', image: 'https://placehold.co/400x400/png?text=Lays', categorySlug: 'chips',
-  },
-  {
-    name: 'Bombay Sweets Potato Crackers', slug: 'potato-crackers', description: 'Spicy potato crackers.', price: 15, unit: '25 gm', image: 'https://placehold.co/400x400/png?text=Crackers', categorySlug: 'chips',
-  },
-  {
-    name: 'Dairy Milk Chocolate', slug: 'dairy-milk', description: 'Cadbury Dairy Milk.', price: 80, unit: '50 gm', image: 'https://placehold.co/400x400/png?text=Chocolate', categorySlug: 'chocolates',
-  },
-  {
-    name: 'KitKat 4 Finger', slug: 'kitkat', description: 'Nestle KitKat chocolate.', price: 65, unit: '1 pc', image: 'https://placehold.co/400x400/png?text=KitKat', categorySlug: 'chocolates',
-  },
+  { name: 'Oreo Biscuits', slug: 'oreo-biscuits', description: "America's favorite chocolate sandwich cookie, classic flavor.", price: 60, unit: '120 gm', image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&q=80', categorySlug: 'biscuits' },
+  { name: 'Energy Plus Biscuit', slug: 'energy-plus', description: 'Healthy wheat-based energy biscuits for all ages.', price: 40, unit: '150 gm', image: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400&q=80', categorySlug: 'biscuits' },
+  { name: 'Lays Classic Potato Chips', slug: 'lays-classic', description: 'Light and crispy perfectly salted potato chips.', price: 50, unit: '50 gm', image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&q=80', categorySlug: 'chips' },
+  { name: 'Bombay Sweets Crackers', slug: 'potato-crackers', description: 'Spicy desi-style potato crackers, crispy and tasty.', price: 15, unit: '25 gm', image: 'https://images.unsplash.com/photo-1621155346337-1d19476ba7d6?w=400&q=80', categorySlug: 'chips' },
+  { name: 'Dairy Milk Chocolate', slug: 'dairy-milk', description: 'Cadbury Dairy Milk creamy milk chocolate bar.', price: 80, unit: '50 gm', image: 'https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=400&q=80', categorySlug: 'chocolates' },
+  { name: 'KitKat 4 Finger', slug: 'kitkat', description: 'Nestle KitKat crispy wafer chocolate bar.', price: 65, unit: '1 pc', image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&q=80', categorySlug: 'chocolates' },
 
   // Beverages
-  {
-    name: 'Ispahani Mirzapore Tea', slug: 'ispahani-tea', description: 'Best quality red tea.', price: 105, unit: '200 gm', image: 'https://placehold.co/400x400/png?text=Tea', categorySlug: 'tea-coffee',
-  },
-  {
-    name: 'Nescafe Classic Coffee', slug: 'nescafe-coffee', description: 'Rich aroma instant coffee.', price: 140, unit: '50 gm', image: 'https://placehold.co/400x400/png?text=Coffee', categorySlug: 'tea-coffee',
-  },
-  {
-    name: 'Pran Mango Juice', slug: 'pran-mango-juice', description: 'Sweet mango fruit juice.', price: 35, unit: '250 ml', image: 'https://placehold.co/400x400/png?text=Mango+Juice', categorySlug: 'juices',
-  },
-  {
-    name: 'Coca Cola', slug: 'coca-cola', description: 'Refreshing cola drink.', price: 40, unit: '500 ml', image: 'https://placehold.co/400x400/png?text=Coca+Cola', categorySlug: 'juices',
-  },
-  {
-    name: 'Sprite', slug: 'sprite', description: 'Refreshing lemon drink.', price: 40, unit: '500 ml', image: 'https://placehold.co/400x400/png?text=Sprite', categorySlug: 'juices',
-  },
-  {
-    name: 'Kinley Drinking Water', slug: 'kinley-water', description: 'Pure drinking water.', price: 20, unit: '1 liter', image: 'https://placehold.co/400x400/png?text=Water', categorySlug: 'juices',
-  }
+  { name: 'Ispahani Mirzapore Tea', slug: 'ispahani-tea', description: "Bangladesh's No. 1 premium red tea blend.", price: 105, unit: '200 gm', image: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400&q=80', categorySlug: 'tea-coffee' },
+  { name: 'Nescafe Classic Coffee', slug: 'nescafe-coffee', description: 'Rich full-bodied instant coffee with bold aroma.', price: 140, unit: '50 gm', image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&q=80', categorySlug: 'tea-coffee' },
+  { name: 'Pran Mango Juice', slug: 'pran-mango-juice', description: 'Refreshing sweet mango fruit drink, made from real mangoes.', price: 35, unit: '250 ml', image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&q=80', categorySlug: 'juices' },
+  { name: 'Coca Cola', slug: 'coca-cola', description: 'The classic original refreshing cola drink.', price: 40, unit: '500 ml', image: 'https://images.unsplash.com/photo-1554475900-0a0350e3fc7b?w=400&q=80', categorySlug: 'juices' },
+  { name: 'Sprite', slug: 'sprite', description: 'Crisp and refreshing lemon-lime carbonated drink.', price: 40, unit: '500 ml', image: 'https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=400&q=80', categorySlug: 'juices' },
+  { name: 'Kinley Drinking Water', slug: 'kinley-water', description: 'Pure purified drinking water, safe and clean.', price: 20, unit: '1 liter', image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&q=80', categorySlug: 'juices' },
 ];
+
 
 export const newsArticles = [
   {
