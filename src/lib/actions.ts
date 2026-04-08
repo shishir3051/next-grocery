@@ -1,5 +1,3 @@
-'use server';
-
 import dbConnect from '@/lib/mongodb';
 import { Product, Category } from '@/models/Product';
 
