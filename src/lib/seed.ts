@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { Product, Category } from '../models/Product';
 import { News } from '../models/News';
+import { User } from '../models/User';
+import { Order } from '../models/Order';
+import { Settings } from '../models/Settings';
 import dbConnect from './mongodb';
 import { getBase64FromUrl } from './imageUtils';
 
@@ -249,7 +253,63 @@ export async function seed() {
     await Category.deleteMany({});
     await Product.deleteMany({});
     await News.deleteMany({});
+    await User.deleteMany({});
+    await Order.deleteMany({});
+    await Settings.deleteMany({});
     console.log('Cleared existing data.');
+
+    // Seed Settings
+    await Settings.create({
+      storeName: 'Fresh Basket',
+      supportEmail: 'support@freshbasket.com',
+      supportPhone: '01700000000',
+      deliveryFee: 50,
+      minFreeDelivery: 500,
+      maintenanceMode: false
+    });
+    console.log('Settings seeded.');
+
+    // Seed Users
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    const adminUser = await User.create({
+      name: 'Admin User',
+      email: 'admin@freshbasket.com',
+      password: hashedPassword,
+      role: 'admin',
+      isVerified: true,
+      walletBalance: 1000
+    });
+    
+    const customer1 = await User.create({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: hashedPassword,
+      role: 'user',
+      isVerified: true,
+      walletBalance: 50,
+      address: {
+        street: 'House 12, Road 4',
+        city: 'Dhaka',
+        zipCode: '1212',
+        phone: '01711111111'
+      }
+    });
+    
+    const customer2 = await User.create({
+      name: 'Jane Smith',
+      email: 'jane@example.com',
+      password: hashedPassword,
+      role: 'user',
+      isVerified: true,
+      walletBalance: 0,
+      address: {
+        street: 'Apt 4B, Dhanmondi',
+        city: 'Dhaka',
+        zipCode: '1205',
+        phone: '01822222222'
+      }
+    });
+    console.log('Users seeded.');
 
     // Seed News Articles
     for (const article of newsArticles) {
@@ -308,6 +368,54 @@ export async function seed() {
       }
     }
     console.log(`Products seeded successfully: ${count} items.`);
+
+    // Seed Orders
+    const allProducts = await Product.find({}).limit(5).lean();
+    if (allProducts.length > 0) {
+      const order1 = await Order.create({
+        user: customer1._id,
+        items: [
+          {
+            productId: allProducts[0]._id,
+            name: allProducts[0].name,
+            price: allProducts[0].price,
+            quantity: 2,
+            image: allProducts[0].image
+          },
+          {
+            productId: allProducts[1]._id,
+            name: allProducts[1].name,
+            price: allProducts[1].price,
+            quantity: 1,
+            image: allProducts[1].image
+          }
+        ],
+        totalAmount: (allProducts[0].price * 2) + allProducts[1].price + 50,
+        shippingAddress: customer1.address,
+        status: 'delivered',
+        paymentProvider: 'cod',
+        paymentStatus: 'paid'
+      });
+
+      const order2 = await Order.create({
+        user: customer2._id,
+        items: [
+          {
+            productId: allProducts[2]._id,
+            name: allProducts[2].name,
+            price: allProducts[2].price,
+            quantity: 3,
+            image: allProducts[2].image
+          }
+        ],
+        totalAmount: (allProducts[2].price * 3) + 50,
+        shippingAddress: customer2.address,
+        status: 'pending',
+        paymentProvider: 'sslcommerz',
+        paymentStatus: 'unpaid'
+      });
+      console.log('Orders seeded.');
+    }
 
   } catch (error) {
     console.error('Seeding error:', error);
