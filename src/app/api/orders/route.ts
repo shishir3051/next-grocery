@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { items, totalAmount, shippingAddress } = await request.json();
+    const { items, totalAmount, shippingAddress, paymentProvider, useWallet } = await request.json();
 
 
     if (!items || !totalAmount || !shippingAddress) {
@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // 0. Verify stock availability
+    let calculatedSubTotal = 0;
+
+    // 0. Verify stock availability and calculate true subtotal
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product || product.stock < item.quantity) {
@@ -44,6 +46,26 @@ export async function POST(request: NextRequest) {
           error: `Insufficient stock for ${product?.name || 'an item'}. Available: ${product?.stock || 0}` 
         }, { status: 400 });
       }
+      calculatedSubTotal += (product.discountPrice || product.price) * item.quantity;
+    }
+
+    const deliveryFee = calculatedSubTotal >= (settings?.minFreeDelivery || 500) ? 0 : (settings?.deliveryFee || 50);
+    const calculatedTotal = calculatedSubTotal + deliveryFee;
+
+    const user = await User.findById((session.user as any).id);
+    let finalAmountToPay = calculatedTotal;
+    let walletDeducted = 0;
+
+    if (useWallet && user && user.walletBalance > 0) {
+      if (user.walletBalance >= calculatedTotal) {
+        walletDeducted = calculatedTotal;
+        finalAmountToPay = 0;
+      } else {
+        walletDeducted = user.walletBalance;
+        finalAmountToPay = calculatedTotal - user.walletBalance;
+      }
+      user.walletBalance -= walletDeducted;
+      await user.save();
     }
 
     // 1. Decrement Stock for each item
@@ -56,10 +78,10 @@ export async function POST(request: NextRequest) {
     const order = await Order.create({
       user: (session.user as any).id,
       items,
-      totalAmount,
+      totalAmount: finalAmountToPay,
       shippingAddress,
       status: 'pending',
-      paymentProvider: 'cod',
+      paymentProvider: paymentProvider || 'cod',
       paymentStatus: 'unpaid'
     });
 

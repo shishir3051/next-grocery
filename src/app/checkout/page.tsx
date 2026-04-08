@@ -41,6 +41,20 @@ export default function CheckoutPage() {
   
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [shippingFee, setShippingFee] = useState(0);
+  
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetch("/api/user/profile")
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) setWalletBalance(data.user.walletBalance || 0);
+        })
+        .catch(console.error);
+    }
+  }, [status]);
 
   useEffect(() => {
     fetchSettings();
@@ -65,7 +79,10 @@ export default function CheckoutPage() {
     }
   }, [totalPrice, storeSettings]);
 
-  const finalTotal = totalPrice + shippingFee;
+  const subTotalWithShipping = totalPrice + shippingFee;
+  const maxWalletApplicable = Math.min(walletBalance, subTotalWithShipping);
+  const walletDeduction = useWallet ? maxWalletApplicable : 0;
+  const finalTotal = Math.max(0, subTotalWithShipping - walletDeduction);
 
 
   useEffect(() => {
@@ -117,6 +134,7 @@ export default function CheckoutPage() {
           })),
           totalAmount: finalTotal,
           shippingAddress: address,
+          useWallet,
         }),
       });
       const data = await res.json();
@@ -167,7 +185,8 @@ export default function CheckoutPage() {
           })),
           totalAmount: finalTotal,
           shippingAddress: address,
-          paymentProvider: 'cod'
+          paymentProvider: 'cod',
+          useWallet,
         }),
       });
 
@@ -433,6 +452,22 @@ export default function CheckoutPage() {
                     {shippingFee === 0 ? 'FREE' : `৳${shippingFee}`}
                   </span>
                 </div>
+                {walletBalance > 0 && (
+                  <div className="pt-3 border-t border-slate-100">
+                    <label className="flex items-center justify-between text-sm font-bold text-slate-700 cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                          checked={useWallet}
+                          onChange={(e) => setUseWallet(e.target.checked)}
+                        />
+                        Apply Wallet Balance (৳{walletBalance})
+                      </div>
+                      {useWallet && <span className="text-emerald-600">-৳{walletDeduction}</span>}
+                    </label>
+                  </div>
+                )}
                 <div className="h-px bg-slate-50" />
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-lg font-bold">Total Amount</span>
