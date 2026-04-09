@@ -189,3 +189,39 @@ export async function seed() {
     throw error;
   }
 }
+
+export const newsArticles = [
+  {
+    title: 'FreshBasket Launches Same-Day Delivery Across Dhaka',
+    slug: 'freshbasket-launches-same-day-delivery',
+    excerpt: 'We are excited to announce our new same-day delivery service covering all major areas of Dhaka city.',
+    content: 'FreshBasket is proud to introduce same-day grocery delivery across Dhaka. Order before 2 PM and receive your fresh groceries by evening. We cover Gulshan, Banani, Dhanmondi, Uttara, Mohakhali, and more.',
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800',
+    category: 'Announcement',
+    author: 'FreshBasket Team',
+    publishedAt: new Date('2024-01-15'),
+    featured: true,
+  },
+  {
+    title: 'Top 10 Fresh Vegetables for a Healthy Bangladeshi Diet',
+    slug: 'top-10-fresh-vegetables-healthy-diet',
+    excerpt: 'Discover the best locally-grown vegetables that are essential for a balanced and nutritious Bangladeshi meal.',
+    content: 'Bangladesh is blessed with a rich variety of fresh vegetables. From lau (bottle gourd) to begun (eggplant), these vegetables form the backbone of our cuisine and nutrition. Here are the top 10 you should always have in your kitchen.',
+    image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800',
+    category: 'Health & Nutrition',
+    author: 'Nutrition Expert',
+    publishedAt: new Date('2024-01-20'),
+    featured: false,
+  },
+  {
+    title: 'How We Ensure Freshness: Our Farm-to-Table Process',
+    slug: 'farm-to-table-process',
+    excerpt: 'Learn how FreshBasket maintains the highest quality standards from farm to your doorstep.',
+    content: 'At FreshBasket, freshness is our top priority. We work directly with local farmers in Munshiganj, Gazipur, and surrounding districts to source the freshest produce every morning. Our cold chain logistics ensure that vegetables and fruits retain their nutritional value.',
+    image: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800',
+    category: 'Behind the Scenes',
+    author: 'Operations Team',
+    publishedAt: new Date('2024-02-01'),
+    featured: true,
+  },
+];
