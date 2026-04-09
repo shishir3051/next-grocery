@@ -30,10 +30,14 @@ export default function DeliveryDashboard() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && session?.user?.role !== 'delivery' && session?.user?.role !== 'admin') {
-      router.push("/");
     } else if (status === "authenticated") {
-      fetchMyOrders();
+      // Small cast to fix build errors if typed session isn't picked up
+      const user = session?.user as any;
+      if (user?.role !== 'delivery' && user?.role !== 'admin') {
+        router.push("/");
+      } else {
+        fetchMyOrders();
+      }
     }
   }, [status, session, router]);
 
