@@ -38,6 +38,18 @@ export default function CheckoutPage() {
   const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
   const [isCouponsModalOpen, setIsCouponsModalOpen] = useState(false);
 
+  // Missing State for Wallet, Settings, and Modal
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+  const [shippingFee, setShippingFee] = useState(0);
+  const [storeSettings, setStoreSettings] = useState<any>(null);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "info" | "warning" | "danger"
+  });
+
   useEffect(() => {
     fetch("/api/public/coupons")
       .then(res => res.json())

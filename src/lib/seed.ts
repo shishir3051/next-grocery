@@ -4,13 +4,13 @@ import { HeroSlide } from '@/models/HeroSlide';
 import dbConnect from '@/lib/mongodb';
 import { getBase64FromUrl } from '@/lib/imageUtils';
 
-const heroSlides = [
+export const heroSlides = [
   { title: "Groceries at your door,", highlight: "fresh every day", subtitle: "Delivered in under 60 minutes.", ctaLabel: "Shop Now", ctaLink: "fruits-vegetables", gradient: "from-teal-600 via-emerald-600 to-teal-800", accentColor: "text-emerald-300", emoji: "🥦", order: 0 },
   { title: "Up to 30% off on", highlight: "fresh fruits & dairy", subtitle: "Limited-time offers on daily essentials.", ctaLabel: "See Deals", ctaLink: "fresh-fruits", gradient: "from-orange-500 via-amber-500 to-orange-700", accentColor: "text-amber-200", emoji: "🍓", order: 1 },
   { title: "Premium quality", highlight: "meat & poultry", subtitle: "Halal-certified chicken, beef and fish.", ctaLabel: "Order Meat", ctaLink: "meat-fish", gradient: "from-rose-600 via-red-600 to-rose-800", accentColor: "text-rose-200", emoji: "🍗", order: 2 }
 ];
 
-const categories = [
+export const categories = [
   { name: 'Fruits & Vegetables', slug: 'fruits-vegetables', icon: '🥗', level: 0, subcategories: [{ name: 'Fresh Vegetables', slug: 'fresh-vegetables', icon: '🥦', level: 1 }, { name: 'Fresh Fruits', slug: 'fresh-fruits', icon: '🍎', level: 1 }] },
   { name: 'Dairy & Eggs', slug: 'dairy-eggs', icon: '🥚', level: 0, subcategories: [{ name: 'Milk', slug: 'milk', icon: '🥛', level: 1 }, { name: 'Eggs', slug: 'eggs', icon: '🍳', level: 1 }, { name: 'Butter & Cheese', slug: 'butter-cheese', icon: '🧀', level: 1 }] },
   { name: 'Pantry & Cooking', slug: 'cooking', icon: '🍳', level: 0, subcategories: [{ name: 'Rice', slug: 'rice', icon: '🍚', level: 1 }, { name: 'Dal or Lentil', slug: 'dal-or-lentil', icon: '🍲', level: 1 }, { name: 'Oil', slug: 'oil', icon: '🛢️', level: 1 }, { name: 'Spices', slug: 'spices', icon: '🌶️', level: 1 }, { name: 'Salt & Sugar', slug: 'salt-sugar', icon: '🧂', level: 1 }, { name: 'Shemai & Suji', slug: 'shemai-suji', icon: '🥣', level: 1 }, { name: 'Ready Mix', slug: 'ready-mix', icon: '📦', level: 1 }, { name: 'Sauces & Pickles', slug: 'sauces-pickles', icon: '🏺', level: 1 }, { name: 'Breakfast', slug: 'breakfast', icon: '🍞', level: 1 }] },
@@ -23,7 +23,7 @@ const categories = [
   { name: 'Frozen & Ice Cream', slug: 'frozen', icon: '🍦', level: 0, subcategories: [{ name: 'Frozen & Canned', slug: 'frozen-canned', icon: '🧊', level: 1 }, { name: 'Ice Cream', slug: 'ice-cream', icon: '🍦', level: 1 }] }
 ];
 
-const products = [
+export const products = [
   /* --- VEGETABLES & FRUITS --- */
   { name: "Potato Regular (Alu)", slug: "potato-regular-1kg", price: 24, unit: "1 kg", cat: "fresh-vegetables", imgId: "photo-1518977676601-b53f02ac6d31" },
   { name: "Red Tomato", slug: "red-tomato-500g", price: 29, unit: "500 gm", cat: "fresh-vegetables", imgId: "photo-1518977822534-7049a6feecba" },
@@ -113,7 +113,7 @@ const products = [
       categorySlug: mainCat.subcategories[0].slug
     };
   })
-].map(p => {
+].map((p: any) => {
   const finalImage = p.imgId 
     ? `https://images.unsplash.com/${p.imgId}?w=800&q=80&fit=crop`
     : p.image;
@@ -124,6 +124,42 @@ const products = [
     image: finalImage
   };
 });
+
+export const newsArticles = [
+  {
+    title: "Organic Farming: The Future of Your Food",
+    slug: "organic-farming-future-of-food",
+    content: "Organic farming is more than just a trend; it's a commitment to sustainable agriculture and healthier living. By avoiding synthetic pesticides and fertilizers, organic farmers preserve soil health and biodiversity while providing more nutritious produce for consumers.",
+    excerpt: "Learn why organic farming is becoming the cornerstone of modern sustainable agriculture and how it benefits your health.",
+    category: "Organic Living",
+    image: "https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&q=80",
+    readTime: "5 min read",
+    author: "Dr. Sarah Mitchell",
+    isPublished: true
+  },
+  {
+    title: "10 Superfoods to Boost Your Immunity This Season",
+    slug: "10-superfoods-boost-immunity",
+    content: "As the seasons change, your body needs extra support. Incorporating superfoods like blueberries, kale, and ginger into your diet can significantly enhance your immune system's ability to fight off infections. These nutrient-dense foods are packed with vitamins and antioxidants essential for well-being.",
+    excerpt: "Discover the most powerful natural ingredients to keep you healthy and energized year-round.",
+    category: "Health & Nutrition",
+    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80",
+    readTime: "4 min read",
+    author: "Nutritionist Leo Chen",
+    isPublished: true
+  },
+  {
+    title: "How to Keep Your Produce Fresh for Longer",
+    slug: "keep-produce-fresh-longer",
+    content: "We've all been there: buying a beautiful head of lettuce only for it to wilt a few days later. Proper storage techniques, from using the right drawer settings in your fridge to wrapping greens in damp paper towels, can double or even triple the shelf life of your favorite fruits and vegetables.",
+    excerpt: "Practical tips and hacks to reduce food waste, save money, and enjoy peak freshness in your kitchen.",
+    category: "Cooking Tips",
+    image: "https://images.unsplash.com/photo-1466632346940-99c1e2815f42?w=800&q=80",
+    readTime: "6 min read",
+    author: "Chef Marcus Thorne",
+    isPublished: true
+  }
+];
 
 export async function seed() {
   try {
