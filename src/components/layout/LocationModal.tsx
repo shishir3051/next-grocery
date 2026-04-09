@@ -51,29 +51,67 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
   };
 
   const resolveLocationData = (data: any) => {
-    if (data && (data.locality || data.city)) {
-      const cityName = data.city || data.principalSubdivision || 'Dhaka';
-      const localArea = data.locality || '';
-      const locationString = localArea && cityName !== localArea ? `${localArea}, ${cityName}` : cityName;
-      
-      setSearch(locationString);
-      
-      if (cityName) {
-        const matchedDistrict = DISTRICTS.find(d => cityName.includes(d) || d.includes(cityName));
+    // Barikoi returns 'place' for reverse geocode or an array for autocomplete
+    const p = data.place || (data.places && data.places[0]) || data;
+    
+    if (p && p.address) {
+      setSearch(p.address);
+
+      // Extract components for manual mode fallback
+      const city = p.city || 'Dhaka';
+      const neighborhood = p.area || '';
+
+      if (city) {
+        const matchedDistrict = DISTRICTS.find(d => city.toLowerCase().includes(d.toLowerCase()) || d.toLowerCase().includes(city.toLowerCase()));
         if (matchedDistrict) {
-           setDistrict(matchedDistrict);
-           if (localArea && AREAS[matchedDistrict]) {
-             const cleanArea = localArea.replace(/ /g, '');
-             const matchedArea = AREAS[matchedDistrict].find(a => 
-               cleanArea.toLowerCase().includes(a.toLowerCase()) || 
-               a.toLowerCase().includes(cleanArea.toLowerCase())
-             );
-             if (matchedArea) setArea(matchedArea);
-           }
+          setDistrict(matchedDistrict);
+          if (neighborhood && AREAS[matchedDistrict]) {
+            const matchedArea = AREAS[matchedDistrict].find(a => 
+              neighborhood.toLowerCase().includes(a.toLowerCase()) || 
+              a.toLowerCase().includes(neighborhood.toLowerCase())
+            );
+            if (matchedArea) setArea(matchedArea);
+          }
         }
       }
     } else {
-      setSearch(`Unknown Area`);
+      setSearch('Unknown Location');
+    }
+  };
+
+  const fetchGeocode = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`/api/geocode?type=reverse&lat=${lat}&lng=${lng}`);
+      const data = await res.json();
+      if (data && data.place) {
+        resolveLocationData(data);
+      } else {
+        setSearch('Unknown Location');
+      }
+    } catch (e) {
+      console.error("Geocoding error:", e);
+      setSearch('Location Finding Failed');
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!search.trim() || search === 'Locating...') return;
+    setIsLocating(true);
+    try {
+      const res = await fetch(`/api/geocode?type=autocomplete&q=${encodeURIComponent(search)}`);
+      const data = await res.json();
+      if (data && data.places && data.places.length > 0) {
+        const result = data.places[0];
+        setMapCenter(`${result.latitude},${result.longitude}`);
+        resolveLocationData({ place: { address: result.address, city: result.city, area: result.area } });
+      } else {
+        setSearch('Address Not Found');
+      }
+    } catch (e) {
+      console.error("Search error:", e);
+      setSearch('Search Failed');
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -83,8 +121,8 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
       const data = await res.json();
       if (data.latitude && data.longitude) {
         setMapCenter(`${data.latitude},${data.longitude}`);
+        await fetchGeocode(data.latitude, data.longitude);
       }
-      resolveLocationData(data);
     } catch (e) {
       setSearch('Location Detection Failed');
     } finally {
@@ -95,16 +133,9 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
   const handleMarkerDragEnd = async (lat: number, lng: number) => {
     setMapCenter(`${lat},${lng}`);
     setIsLocating(true);
-    setSearch('Locating Area...');
-    try {
-      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-      const data = await res.json();
-      resolveLocationData(data);
-    } catch (e) {
-      setSearch('Location Detection Failed');
-    } finally {
-      setIsLocating(false);
-    }
+    setSearch('Locating...');
+    await fetchGeocode(lat, lng);
+    setIsLocating(false);
   };
 
   const activeCenter: [number, number] = mapCenter 
@@ -125,18 +156,16 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
         try {
           const { latitude, longitude } = position.coords;
           setMapCenter(`${latitude},${longitude}`);
-          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
-          const data = await res.json();
-          resolveLocationData(data);
+          await fetchGeocode(latitude, longitude);
         } catch (error) {
-          console.error("Reverse geocoding failed", error);
-          setSearch(`Location Detected`);
+          console.error("GPS failed", error);
+          fetchIPFallback();
         } finally {
           setIsLocating(false);
         }
       },
       (error) => {
-        console.warn("GPS failed, falling back to IP API");
+        console.warn("GPS Permission Denied, using IP");
         fetchIPFallback();
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -174,7 +203,7 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
           {!isManualMode ? (
             // MAP MODE (Matching Screenshot Exactly)
             <div className="absolute inset-0 flex flex-col">
-              {/* Interactive Leaflet Map */}
+              {/* Interactive Google Map */}
               <DynamicMap 
                 center={activeCenter}
                 onMarkerDragEnd={handleMarkerDragEnd}
@@ -188,9 +217,9 @@ export default function LocationModal({ isOpen, onClose, currentLocation, onLoca
                     type="text" 
                     placeholder="Search delivery location"
                     value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setMapCenter('');
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSearch();
                     }}
                     className="w-full text-sm outline-none font-medium placeholder-slate-400 text-slate-700 bg-transparent"
                   />

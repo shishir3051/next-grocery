@@ -24,6 +24,18 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header
@@ -108,8 +120,11 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
         {/* User Account / Auth */}
       <div className="flex items-center gap-1 flex-shrink-0">
           {status === 'authenticated' ? (
-            <div className="relative group">
-              <button className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+            <div className="relative group" ref={userMenuRef}>
+              <button 
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+              >
                 <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-sm uppercase">
                   {session.user?.name?.charAt(0)}
                 </div>
@@ -120,25 +135,30 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
               </button>
               
               {/* Dropdown */}
-              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <div className={`absolute top-full right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 transition-all z-50 ${
+                isUserMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible lg:group-hover:opacity-100 lg:group-hover:visible'
+              }`}>
                 {(session.user as any).role === 'admin' && (
-                  <Link href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm text-teal-600 font-bold hover:bg-teal-50 transition-all border-b border-slate-50">
+                  <Link href="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-teal-600 font-bold hover:bg-teal-50 transition-all border-b border-slate-50">
                     <LayoutDashboard size={16} />
                     Admin Dashboard
                   </Link>
                 )}
-                <Link href="/profile" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
+                <Link href="/profile" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
                   <User size={16} />
                   My Profile
                 </Link>
                 {(session.user as any).role !== 'admin' && (
-                  <Link href="/orders" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
+                  <Link href="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
                     <Package size={16} />
                     My Orders
                   </Link>
                 )}
                 <button 
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    signOut();
+                  }}
                   className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all text-left"
                 >
                   <LogOut size={16} />
