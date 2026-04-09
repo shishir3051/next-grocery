@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { orderId, status, paymentStatus } = await request.json();
+    const { orderId, status, paymentStatus, assignedTo } = await request.json();
 
     if (!orderId) {
       return NextResponse.json({ error: "Order ID required" }, { status: 400 });
@@ -53,6 +53,12 @@ export async function PATCH(request: NextRequest) {
     const update: any = {};
     if (status) update.status = status;
     if (paymentStatus) update.paymentStatus = paymentStatus;
+    
+    if (assignedTo) {
+      update.assignedTo = assignedTo;
+      update.status = 'shipped';
+      update.dispatchedAt = new Date();
+    }
 
     const updatedOrder = await Order.findByIdAndUpdate(orderId, update, { new: true });
     

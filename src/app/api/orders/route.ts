@@ -6,6 +6,7 @@ import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
 import { Settings } from "@/models/Settings";
 import { User } from "@/models/User";
+import { Coupon } from "@/models/Coupon";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { items, totalAmount, shippingAddress, paymentProvider, useWallet } = await request.json();
+    const { items, totalAmount, shippingAddress, paymentProvider, useWallet, deliveryNote, couponCode } = await request.json();
 
 
     if (!items || !totalAmount || !shippingAddress) {
@@ -49,8 +50,33 @@ export async function POST(request: NextRequest) {
       calculatedSubTotal += (product.discountPrice || product.price) * item.quantity;
     }
 
+    // 1. Server-Side Coupon Re-validation
+    let discountFromCoupon = 0;
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ 
+        code: couponCode.toUpperCase(), 
+        isActive: true,
+        expiryDate: { $gte: new Date() }
+      });
+
+      if (coupon && calculatedSubTotal >= coupon.minOrderAmount) {
+        if (coupon.discountType === 'percentage') {
+          discountFromCoupon = (calculatedSubTotal * coupon.discountValue) / 100;
+          if (coupon.maxDiscount) discountFromCoupon = Math.min(discountFromCoupon, coupon.maxDiscount);
+        } else {
+          discountFromCoupon = coupon.discountValue;
+        }
+        
+        // Increment usage count
+        await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+      }
+    }
+
     const deliveryFee = calculatedSubTotal >= (settings?.minFreeDelivery || 500) ? 0 : (settings?.deliveryFee || 50);
-    const calculatedTotal = calculatedSubTotal + deliveryFee;
+    const calculatedTotal = calculatedSubTotal + deliveryFee - discountFromCoupon;
+
+    // Note: totalAmount sent from frontend might be slightly different due to decimals, 
+    // but the server's calculatedTotal is the source of truth.
 
     const user = await User.findById((session.user as any).id);
     let finalAmountToPay = calculatedTotal;
@@ -82,7 +108,10 @@ export async function POST(request: NextRequest) {
       shippingAddress,
       status: 'pending',
       paymentProvider: paymentProvider || 'cod',
-      paymentStatus: 'unpaid'
+      paymentStatus: 'unpaid',
+      deliveryNote,
+      couponCode: discountFromCoupon > 0 ? couponCode.toUpperCase() : null,
+      discountAmount: discountFromCoupon
     });
 
     return NextResponse.json({ success: true, orderId: order._id }, { status: 201 });

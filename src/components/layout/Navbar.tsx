@@ -144,6 +144,12 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
                     Admin Dashboard
                   </Link>
                 )}
+                {(session.user as any).role === 'delivery' && (
+                  <Link href="/delivery" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 font-bold hover:bg-emerald-50 transition-all border-b border-slate-50">
+                    <Truck size={16} />
+                    Delivery Dashboard
+                  </Link>
+                )}
                 <Link href="/profile" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
                   <User size={16} />
                   My Profile

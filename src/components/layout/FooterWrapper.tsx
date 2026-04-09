@@ -11,7 +11,7 @@ export default function FooterWrapper() {
   // Only the home page currently features the fixed categories sidebar
   const showSidebarOffset = pathname === "/";
 
-  if (isAdmin || isAuth) return null;
+  if (isAdmin || isAuth || pathname === "/checkout") return null;
 
   return <Footer showSidebarOffset={showSidebarOffset} />;
 }

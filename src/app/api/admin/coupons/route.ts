@@ -2,8 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
+import { Coupon } from "@/models/Coupon";
 import { User } from "@/models/User";
-import bcrypt from "bcryptjs";
+
+/**
+ * Handle Coupon management for admins.
+ */
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await dbConnect();
+    const adminUser = await User.findOne({ email: session.user.email });
+    if (adminUser?.role !== 'admin') {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const coupons = await Coupon.find().sort({ createdAt: -1 });
+    return NextResponse.json({ coupons });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,56 +41,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { name, email, password, role } = await request.json();
+    const body = await request.json();
+    const { 
+      code, 
+      discountType, 
+      discountValue, 
+      minOrderAmount, 
+      maxDiscount, 
+      expiryDate, 
+      isActive,
+      usageLimit
+    } = body;
 
-    if (!name || !email || !password || !role) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    // Check if coupon code already exists
+    const existing = await Coupon.findOne({ code: code.toUpperCase() });
+    if (existing) {
+      return NextResponse.json({ error: "Coupon code already exists" }, { status: 400 });
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json({ error: "User already exists with this email" }, { status: 400 });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const referralCode = `FRESH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role,
-      isVerified: true, 
-      referralCode
+    const newCoupon = await Coupon.create({
+      code: code.toUpperCase(),
+      discountType,
+      discountValue: Number(discountValue),
+      minOrderAmount: Number(minOrderAmount) || 0,
+      maxDiscount: maxDiscount ? Number(maxDiscount) : null,
+      expiryDate: new Date(expiryDate),
+      isActive: isActive !== undefined ? isActive : true,
+      usageLimit: usageLimit ? Number(usageLimit) : null
     });
 
-    return NextResponse.json({ 
-      message: "User created successfully", 
-      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role } 
-    }, { status: 201 });
-
-  } catch (error: any) {
-    console.error("User creation error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Return all users except passwords
-    const users = await User.find({}, '-password').sort({ createdAt: -1 });
-    return NextResponse.json({ users });
+    return NextResponse.json({ message: "Coupon created successfully", coupon: newCoupon });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -86,20 +89,23 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { id, role } = await request.json();
+    const body = await request.json();
+    const { id, ...updateData } = body;
+
+    if (updateData.discountValue) updateData.discountValue = Number(updateData.discountValue);
+    if (updateData.minOrderAmount !== undefined) updateData.minOrderAmount = Number(updateData.minOrderAmount);
+    if (updateData.maxDiscount !== undefined) updateData.maxDiscount = updateData.maxDiscount ? Number(updateData.maxDiscount) : null;
+    if (updateData.expiryDate) updateData.expiryDate = new Date(updateData.expiryDate);
+    if (updateData.usageLimit !== undefined) updateData.usageLimit = updateData.usageLimit ? Number(updateData.usageLimit) : null;
+    if (updateData.code) updateData.code = updateData.code.toUpperCase();
+
+    const updatedCoupon = await Coupon.findByIdAndUpdate(id, updateData, { new: true });
     
-    // Prevent admin from demoting themselves (safety)
-    if (adminUser._id.toString() === id && role !== 'admin') {
-        return NextResponse.json({ error: "Cannot demote yourself" }, { status: 400 });
+    if (!updatedCoupon) {
+      return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(id, { role }, { new: true });
-    
-    if (!updatedUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: "User role updated", user: updatedUser });
+    return NextResponse.json({ message: "Coupon updated successfully", coupon: updatedCoupon });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -124,14 +130,9 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "ID required" }, { status: 400 });
     }
-    
-    // Prevent admin from deleting themselves
-    if (adminUser._id.toString() === id) {
-        return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
-    }
 
-    await User.findByIdAndDelete(id);
-    return NextResponse.json({ message: "User deleted successfully" });
+    await Coupon.findByIdAndDelete(id);
+    return NextResponse.json({ message: "Coupon deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

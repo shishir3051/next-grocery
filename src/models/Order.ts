@@ -32,6 +32,12 @@ const OrderSchema = new Schema({
     enum: ['unpaid', 'paid'],
     default: 'unpaid'
   },
+  deliveryNote: { type: String, default: null },
+  couponCode: { type: String, default: null },
+  discountAmount: { type: Number, default: 0 },
+  assignedTo: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  dispatchedAt: { type: Date, default: null },
+  deliveredAt: { type: Date, default: null },
 }, { timestamps: true });
 
 export const Order = models.Order || model('Order', OrderSchema);

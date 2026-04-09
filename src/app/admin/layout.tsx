@@ -17,7 +17,8 @@ import {
   Leaf,
   Home,
   ExternalLink,
-  Newspaper
+  Newspaper,
+  Ticket
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +28,7 @@ const SIDEBAR_ITEMS = [
   { name: "Products", href: "/admin/products", icon: ShoppingBag },
   { name: "Orders", href: "/admin/orders", icon: Package },
   { name: "Users", href: "/admin/users", icon: Users },
+  { name: "Coupons", href: "/admin/coupons", icon: Ticket },
   { name: "News", href: "/admin/news", icon: Newspaper },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];

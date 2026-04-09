@@ -6,6 +6,7 @@ import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
 import { Settings } from "@/models/Settings";
 import { User } from "@/models/User";
+import { Coupon } from "@/models/Coupon";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { items, totalAmount, shippingAddress } = await request.json();
+    const { items, totalAmount, shippingAddress, deliveryNote, couponCode } = await request.json();
 
 
     if (!items || !totalAmount || !shippingAddress) {
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // 0. Verify stock availability before proceeding
+    let calculatedSubTotal = 0;
+    // 0. Verify stock availability and calculate true subtotal
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product || product.stock < item.quantity) {
@@ -47,25 +49,51 @@ export async function POST(request: NextRequest) {
           error: `Insufficient stock for ${product?.name || 'an item'}. Available: ${product?.stock || 0}` 
         }, { status: 400 });
       }
+      calculatedSubTotal += (product.discountPrice || product.price) * item.quantity;
     }
+
+    // 1. Server-Side Coupon Re-validation
+    let discountFromCoupon = 0;
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ 
+        code: couponCode.toUpperCase(), 
+        isActive: true,
+        expiryDate: { $gte: new Date() }
+      });
+
+      if (coupon && calculatedSubTotal >= coupon.minOrderAmount) {
+        if (coupon.discountType === 'percentage') {
+          discountFromCoupon = (calculatedSubTotal * coupon.discountValue) / 100;
+          if (coupon.maxDiscount) discountFromCoupon = Math.min(discountFromCoupon, coupon.maxDiscount);
+        } else {
+          discountFromCoupon = coupon.discountValue;
+        }
+      }
+    }
+
+    const deliveryFee = calculatedSubTotal >= (settings?.minFreeDelivery || 500) ? 0 : (settings?.deliveryFee || 50);
+    const calculatedTotal = calculatedSubTotal + deliveryFee - discountFromCoupon;
 
     // Create provisional order
     const order = await Order.create({
       user: (session.user as any).id,
       items,
-      totalAmount,
+      totalAmount: calculatedTotal,
       shippingAddress,
       status: 'pending',
       paymentProvider: 'sslcommerz',
       paymentProviderId: tran_id,
       paymentStatus: 'unpaid',
+      deliveryNote,
+      couponCode: discountFromCoupon > 0 ? couponCode.toUpperCase() : null,
+      discountAmount: discountFromCoupon
     });
 
     // Construct form data as URLSearchParams
     const formData = new URLSearchParams();
     formData.append('store_id', process.env.SSLCOMMERZ_STORE_ID || '');
     formData.append('store_passwd', process.env.SSLCOMMERZ_STORE_PASSWORD || '');
-    formData.append('total_amount', totalAmount.toString());
+    formData.append('total_amount', calculatedTotal.toString());
     formData.append('currency', 'BDT');
     formData.append('tran_id', tran_id);
     formData.append('success_url', `${baseUrl}/api/payments/ssl-status?status=success&orderId=${order._id}`);

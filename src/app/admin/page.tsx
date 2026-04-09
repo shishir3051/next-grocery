@@ -26,16 +26,6 @@ import {
 } from 'recharts';
 import Link from "next/link";
 
-const data = [
-  { name: 'Mon', sales: 4000 },
-  { name: 'Tue', sales: 3000 },
-  { name: 'Wed', sales: 2000 },
-  { name: 'Thu', sales: 2780 },
-  { name: 'Fri', sales: 1890 },
-  { name: 'Sat', sales: 2390 },
-  { name: 'Sun', sales: 3490 },
-];
-
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,10 +57,38 @@ export default function AdminDashboard() {
   }
 
   const cards = [
-    { name: 'Total Sales', value: `৳${stats?.metrics?.totalSales || 0}`, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+12.5%' },
-    { name: 'Total Orders', value: stats?.metrics?.totalOrders || 0, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+5.4%' },
-    { name: 'Total Users', value: stats?.metrics?.totalUsers || 0, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+2.1%' },
-    { name: 'Active Inventory', value: stats?.metrics?.totalProducts || 0, icon: ShoppingBag, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Healthy' },
+    { 
+      name: 'Total Sales', 
+      value: `৳${stats?.metrics?.totalSales || 0}`, 
+      icon: TrendingUp, 
+      color: 'text-emerald-600', 
+      bg: 'bg-emerald-50', 
+      trend: stats?.metrics?.trends?.sales || "0%"
+    },
+    { 
+      name: 'Total Orders', 
+      value: stats?.metrics?.totalOrders || 0, 
+      icon: Package, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50', 
+      trend: stats?.metrics?.trends?.orders || "0%"
+    },
+    { 
+      name: 'Total Users', 
+      value: stats?.metrics?.totalUsers || 0, 
+      icon: Users, 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-50', 
+      trend: stats?.metrics?.trends?.users || "0%"
+    },
+    { 
+      name: 'Active Inventory', 
+      value: stats?.metrics?.totalProducts || 0, 
+      icon: ShoppingBag, 
+      color: 'text-amber-600', 
+      bg: 'bg-amber-50', 
+      trend: stats?.metrics?.trends?.inventory || "Healthy"
+    },
   ];
 
   return (
@@ -90,9 +108,12 @@ export default function AdminDashboard() {
                 <card.icon size={24} />
               </div>
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${
-                card.trend.includes('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'
+                card.trend.includes('+') ? 'bg-emerald-50 text-emerald-600' : 
+                card.trend.includes('-') ? 'bg-rose-50 text-rose-600' : 
+                'bg-slate-50 text-slate-500'
               }`}>
-                {card.trend.includes('+') ? <ArrowUpRight size={12} /> : null}
+                {card.trend.includes('+') ? <ArrowUpRight size={12} /> : 
+                 card.trend.includes('-') ? <ArrowDownRight size={12} /> : null}
                 {card.trend}
               </span>
             </div>
@@ -111,14 +132,13 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold text-slate-800">Sales Overview</h3>
-            <select className="bg-slate-50 border-none rounded-xl text-xs font-bold px-4 py-2 outline-none cursor-pointer">
-              <option>Last 7 Days</option>
-              <option>Last 30 Days</option>
-            </select>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Last 7 Days
+            </div>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={stats?.salesHistory || []}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2}/>
@@ -140,6 +160,7 @@ export default function AdminDashboard() {
                 />
                 <Tooltip 
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  labelStyle={{ fontWeight: 'black', color: '#1e293b' }}
                 />
                 <Area type="monotone" dataKey="sales" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
               </AreaChart>
@@ -176,9 +197,12 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-8 py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-all text-sm">
+            <Link 
+              href="/admin/orders"
+              className="w-full mt-8 py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-all text-sm block text-center"
+            >
               View All Transactions
-            </button>
+            </Link>
           </motion.div>
 
           <motion.div
