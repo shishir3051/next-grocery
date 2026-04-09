@@ -1,230 +1,292 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowRight, ChevronLeft, ChevronRight, Truck, Leaf, Tag, Zap } from 'lucide-react';
+import { 
+  ArrowRight, 
+  ChevronLeft, 
+  ChevronRight, 
+  Truck, 
+  Zap, 
+  Loader2, 
+  Image as ImageIcon,
+  Tag,
+  Copy,
+  Gift,
+  CheckCircle2
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
-const SLIDES = [
-  {
-    id: 1,
-    badge: { icon: '🌿', text: 'Fresh & Organic' },
-    title: 'Groceries at your door,',
-    highlight: 'fresh every day',
-    subtitle: 'From crisp vegetables to premium meats — delivered in under 60 minutes across Dhaka.',
-    cta: { label: 'Shop Now', action: 'all' },
-    features: ['60-min delivery', 'Farm fresh', 'Free over ৳500'],
-    gradient: 'from-teal-600 via-emerald-600 to-teal-800',
-    accentColor: 'text-emerald-300',
-    decorColor: 'bg-emerald-400/20',
-    emoji: '🥦',
-    tag: 'FREE DELIVERY OVER ৳500',
-    tagColor: 'bg-emerald-500/30 text-emerald-100',
-  },
-  {
-    id: 2,
-    badge: { icon: '🔥', text: 'Hot Deals Today' },
-    title: 'Up to 30% off on',
-    highlight: 'fresh fruits & dairy',
-    subtitle: 'Limited-time offers on your favourite daily essentials. Order now before stock runs out.',
-    cta: { label: 'See Deals', action: 'fresh-fruits' },
-    features: ['Limited time', 'Best prices', 'Top quality'],
-    gradient: 'from-orange-500 via-amber-500 to-orange-700',
-    accentColor: 'text-amber-200',
-    decorColor: 'bg-amber-300/20',
-    emoji: '🍓',
-    tag: 'TODAY ONLY',
-    tagColor: 'bg-orange-400/30 text-orange-100',
-  },
-  {
-    id: 3,
-    badge: { icon: '☪', text: 'Halal Certified' },
-    title: 'Premium quality',
-    highlight: 'meat & poultry',
-    subtitle: 'Freshly sourced halal-certified chicken, beef and fish — delivered chilled to your door.',
-    cta: { label: 'Order Meat', action: 'meat-fish' },
-    features: ['Halal certified', 'Chilled delivery', 'Farm sourced'],
-    gradient: 'from-rose-600 via-red-600 to-rose-800',
-    accentColor: 'text-rose-200',
-    decorColor: 'bg-rose-300/20',
-    emoji: '🍗',
-    tag: 'PREMIUM QUALITY',
-    tagColor: 'bg-rose-400/30 text-rose-100',
-  },
-  {
-    id: 4,
-    badge: { icon: '🥛', text: 'Dairy & Eggs' },
-    title: 'Start your morning',
-    highlight: 'the fresh way',
-    subtitle: 'Farm-fresh milk, eggs, cheese and yoghurt — everything you need for a perfect start.',
-    cta: { label: 'Shop Dairy', action: 'dairy-eggs' },
-    features: ['Farm fresh', 'Daily restocked', 'Best brands'],
-    gradient: 'from-sky-500 via-blue-500 to-sky-700',
-    accentColor: 'text-sky-200',
-    decorColor: 'bg-sky-300/20',
-    emoji: '🥚',
-    tag: 'NEW ARRIVALS',
-    tagColor: 'bg-sky-400/30 text-sky-100',
-  },
-];
+interface HeroSlide {
+  _id: string;
+  title: string;
+  highlight: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaLink: string;
+  image: string;
+  gradient: string;
+  accentColor: string;
+  decorColor: string;
+  emoji: string;
+  tag: string;
+  tagColor: string;
+  isActive: boolean;
+  order: number;
+  type?: 'coupon'; // Added to distinguish special slides
+}
+
+interface Coupon {
+  _id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minOrderAmount: number;
+}
 
 interface HeroBannerProps {
   onSelectCategory?: (slug: string) => void;
 }
 
 export default function HeroBanner({ onSelectCategory }: HeroBannerProps) {
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [current, setCurrent] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchHeroData = useCallback(async () => {
+    try {
+      // Parallel fetch for Hero Slides and Public Coupons
+      const [heroRes, couponRes] = await Promise.all([
+        fetch("/api/public/hero"),
+        fetch("/api/public/coupons")
+      ]);
+
+      const heroData = await heroRes.json();
+      const couponData = await couponRes.json();
+
+      let finalSlides = heroData.success ? [...heroData.slides] : [];
+
+      // If coupons exist, inject a "Bonus Coupon Slide"
+      if (couponData.success && couponData.coupons.length > 0) {
+        const topCoupon = couponData.coupons[0];
+        const couponSlide: HeroSlide = {
+          _id: 'coupon-special-slide',
+          title: "Extra Savings For",
+          highlight: "Your First Order",
+          subtitle: `Get ${topCoupon.discountType === 'percentage' ? topCoupon.discountValue + '%' : '৳' + topCoupon.discountValue} OFF using code: ${topCoupon.code}`,
+          ctaLabel: "Copy Code",
+          ctaLink: topCoupon.code,
+          image: "",
+          gradient: "from-violet-600 via-purple-600 to-indigo-800",
+          accentColor: "text-violet-200",
+          decorColor: "bg-violet-400/20",
+          emoji: "🎁",
+          tag: "SPECIAL OFFER",
+          tagColor: "bg-violet-500/30 text-violet-100",
+          isActive: true,
+          order: -1, // Make it appear near the front
+          type: 'coupon'
+        };
+        finalSlides.unshift(couponSlide);
+      }
+
+      if (finalSlides.length > 0) {
+        setSlides(finalSlides);
+      }
+    } catch (e) {
+      console.error("Hero data fetch error:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHeroData();
+  }, [fetchHeroData]);
 
   const goTo = useCallback((index: number, dir: 'next' | 'prev' = 'next') => {
-    if (isAnimating) return;
+    if (isAnimating || slides.length === 0) return;
     setIsAnimating(true);
     setDirection(dir);
     setCurrent(index);
     setTimeout(() => setIsAnimating(false), 500);
-  }, [isAnimating]);
+  }, [isAnimating, slides.length]);
 
   const next = useCallback(() => {
-    goTo((current + 1) % SLIDES.length, 'next');
-  }, [current, goTo]);
+    if (slides.length === 0) return;
+    goTo((current + 1) % slides.length, 'next');
+  }, [current, goTo, slides.length]);
 
   const prev = useCallback(() => {
-    goTo((current - 1 + SLIDES.length) % SLIDES.length, 'prev');
-  }, [current, goTo]);
+    if (slides.length === 0) return;
+    goTo((current - 1 + slides.length) % slides.length, 'prev');
+  }, [current, goTo, slides.length]);
 
-  // Auto-play every 5 seconds
+  // Auto-play
   useEffect(() => {
-    const timer = setInterval(next, 5000);
+    if (slides.length <= 1) return;
+    const timer = setInterval(next, 6000);
     return () => clearInterval(timer);
-  }, [next]);
+  }, [next, slides.length]);
 
-  const slide = SLIDES[current];
+  const handleCopy = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success(`Code ${code} copied!`, {
+      icon: '🔥',
+      style: { borderRadius: '1rem', background: '#333', color: '#fff' }
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-[320px] md:h-[380px] rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center mb-8">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+      </div>
+    );
+  }
+
+  if (slides.length === 0) return null;
+
+  const slide = slides[current];
 
   return (
-    <section className="relative rounded-2xl overflow-hidden mb-8 select-none w-full h-[320px] md:h-[380px]">
-      {/* Slide background */}
-      <div
-        className={`absolute inset-0 bg-gradient-to-br ${slide.gradient} transition-colors duration-700`}
-      />
+    <section className="relative rounded-2xl overflow-hidden mb-8 select-none w-full h-[320px] md:h-[380px] shadow-sm">
+      {/* Background Layer */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient} transition-colors duration-700`}>
+        {slide.image && (
+          <Image 
+            src={slide.image} 
+            alt={slide.title} 
+            fill 
+            className="object-cover mix-blend-overlay opacity-40 transition-opacity duration-700" 
+            priority
+          />
+        )}
+      </div>
 
-      {/* Decorative circles */}
+      {/* Decorative Assets */}
       <div className={`absolute top-0 right-0 w-72 h-72 ${slide.decorColor} rounded-full -translate-y-1/3 translate-x-1/4 transition-all duration-700`} />
       <div className={`absolute bottom-0 left-1/3 w-48 h-48 ${slide.decorColor} rounded-full translate-y-1/2 transition-all duration-700`} />
-      <div className={`absolute top-1/2 right-1/4 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 transition-all duration-700`} />
+      
+      {!slide.image && (
+        <div className="absolute right-12 top-1/2 -translate-y-1/2 text-[140px] md:text-[200px] leading-none opacity-20 transition-all duration-700 hidden md:block select-none" aria-hidden>
+          {slide.emoji}
+        </div>
+      )}
 
-      {/* Big decorative emoji */}
-      <div
-        className="absolute right-12 top-1/2 -translate-y-1/2 text-[120px] md:text-[160px] leading-none opacity-20 select-none transition-all duration-700 hidden md:block"
-        aria-hidden
-      >
-        {slide.emoji}
-      </div>
-
-      {/* Content */}
+      {/* Main Content Area */}
       <div className="absolute inset-0 z-10 p-8 md:p-12 flex flex-col justify-center">
-        {SLIDES.map((s, index) => {
-          const isActive = index === current;
-          return (
-            <div
-              key={s.id}
-              className={`absolute transition-all duration-500 ease-in-out w-full max-w-xl ${
-                isActive
-                  ? 'opacity-100 translate-x-0 pointer-events-auto'
-                  : 'opacity-0 -translate-x-8 pointer-events-none'
-              }`}
-            >
-              {/* Badge */}
-              <div className="flex items-center gap-2 mb-4 flex-wrap">
-                <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${s.tagColor} backdrop-blur-sm w-fit`}>
-                  <span>{s.badge.icon}</span>
-                  {s.badge.text}
-                </span>
-                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${s.tagColor} uppercase tracking-widest`}>
-                  {s.tag}
-                </span>
-              </div>
-
-              {/* Headline */}
-              <h1 className="text-3xl md:text-5xl font-black leading-tight mb-4 text-white">
-                {s.title}{' '}
-                <span className={s.accentColor}>{s.highlight}</span>
-              </h1>
-
-              {/* Subtitle */}
-              <p className="text-sm md:text-base text-white/90 leading-relaxed mb-6 max-w-sm">
-                {s.subtitle}
-              </p>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => onSelectCategory && onSelectCategory(s.cta.action)}
-                  className="flex items-center gap-2 px-6 py-3 bg-white text-slate-800 font-black rounded-xl text-sm hover:bg-white/90 transition-all shadow-xl shadow-black/20 hover:scale-105"
-                >
-                  {s.cta.label}
-                  <ArrowRight size={15} />
-                </button>
-                <div className="flex items-center gap-1.5 px-4 py-3 bg-white/15 backdrop-blur-sm text-white font-semibold rounded-xl text-xs border border-white/25 hover:bg-white/25 transition-all cursor-pointer">
-                  <Truck size={13} />
-                  Free delivery over ৳500
-                </div>
-              </div>
-
-              {/* Feature Pills */}
-              <div className="flex flex-wrap gap-2 mt-5 hidden sm:flex">
-                {s.features.map((f) => (
-                  <span
-                    key={f}
-                    className="flex items-center gap-1 text-[10px] font-bold text-white/90 bg-white/10 border border-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm"
-                  >
-                    <Zap size={9} className="text-yellow-300" />
-                    {f}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={slide._id}
+            initial={{ opacity: 0, x: direction === 'next' ? 40 : -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction === 'next' ? -40 : 40 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-xl"
+          >
+            {/* Badge System */}
+            {(slide.tag || slide.emoji) && (
+              <div className="flex items-center gap-2 mb-5 flex-wrap">
+                {slide.emoji && (
+                  <span className={`w-9 h-9 flex items-center justify-center text-lg rounded-xl ${slide.tagColor} backdrop-blur-md shadow-lg border border-white/10`}>
+                    {slide.emoji}
                   </span>
-                ))}
+                )}
+                {slide.tag && (
+                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-lg ${slide.tagColor} uppercase tracking-[0.15em] backdrop-blur-md border border-white/10`}>
+                    {slide.tag}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Typography */}
+            <h1 className="text-3xl md:text-5xl font-black leading-[1.1] mb-4 text-white drop-shadow-sm">
+              {slide.title}{' '}
+              <span className={slide.accentColor}>{slide.highlight}</span>
+            </h1>
+
+            <p className="text-sm md:text-lg text-white/90 leading-relaxed mb-8 max-w-md font-medium">
+              {slide.subtitle}
+            </p>
+
+            {/* Call to Action */}
+            <div className="flex flex-wrap gap-4 items-center">
+              {slide.type === 'coupon' ? (
+                <button
+                  onClick={() => handleCopy(slide.ctaLink)}
+                  className="flex items-center gap-3 px-8 py-4 bg-white text-violet-700 font-black rounded-2xl text-base hover:bg-violet-50 transition-all shadow-2xl shadow-indigo-900/40 hover:scale-[1.03] active:scale-95 group"
+                >
+                  <Copy size={18} className="group-hover:rotate-12 transition-transform" />
+                  {slide.ctaLabel}: {slide.ctaLink}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (slide.ctaLink.startsWith('http')) {
+                      window.open(slide.ctaLink, '_blank');
+                    } else if (onSelectCategory) {
+                      onSelectCategory(slide.ctaLink);
+                    }
+                  }}
+                  className="flex items-center gap-3 px-8 py-4 bg-white text-slate-800 font-black rounded-2xl text-base hover:bg-slate-50 transition-all shadow-2xl shadow-black/20 hover:scale-[1.03] active:scale-95 group"
+                >
+                  {slide.ctaLabel}
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
+              
+              <div className="hidden sm:flex items-center gap-2 px-5 py-4 bg-white/10 backdrop-blur-md text-white font-bold rounded-2xl text-xs border border-white/20">
+                <CheckCircle2 size={16} className="text-emerald-300" />
+                Verified Active Deals
               </div>
             </div>
-          );
-        })}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Left Arrow */}
-      <button
-        onClick={prev}
-        aria-label="Previous slide"
-        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm flex items-center justify-center text-white transition-all hover:scale-110 border border-white/30"
-      >
-        <ChevronLeft size={18} />
-      </button>
+      {/* Navigation Controls */}
+      {slides.length > 1 && (
+        <>
+          <div className="absolute right-6 bottom-6 z-20 flex gap-2">
+            <button
+              onClick={prev}
+              className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-all border border-white/20 group"
+            >
+              <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+            </button>
+            <button
+              onClick={next}
+              className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-all border border-white/20 group"
+            >
+              <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
 
-      {/* Right Arrow */}
-      <button
-        onClick={next}
-        aria-label="Next slide"
-        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm flex items-center justify-center text-white transition-all hover:scale-110 border border-white/30"
-      >
-        <ChevronRight size={18} />
-      </button>
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5">
+            {slides.map((s, i) => (
+              <button
+                key={s._id}
+                onClick={() => goTo(i, i > current ? 'next' : 'prev')}
+                className={`transition-all duration-500 rounded-full ${
+                  i === current
+                    ? 'w-10 h-2 bg-white shadow-lg'
+                    : 'w-2 h-2 bg-white/30 hover:bg-white/60'
+                }`}
+              />
+            ))}
+          </div>
 
-      {/* Slide Indicator Dots */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-        {SLIDES.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => goTo(i, i > current ? 'next' : 'prev')}
-            aria-label={`Go to slide ${i + 1}`}
-            className={`transition-all duration-300 rounded-full ${
-              i === current
-                ? 'w-6 h-2.5 bg-white shadow-lg'
-                : 'w-2.5 h-2.5 bg-white/40 hover:bg-white/70'
-            }`}
-          />
-        ))}
-      </div>
-
-      {/* Slide Counter */}
-      <div className="absolute top-4 right-4 z-20 text-xs font-bold text-white/60 tabular-nums">
-        {String(current + 1).padStart(2, '0')} / {String(SLIDES.length).padStart(2, '0')}
-      </div>
+          <div className="absolute top-8 right-8 z-20 text-[11px] font-black text-white/50 uppercase tracking-[0.3em] tabular-nums">
+            {String(current + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
+          </div>
+        </>
+      )}
     </section>
   );
 }

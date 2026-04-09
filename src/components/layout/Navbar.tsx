@@ -1,6 +1,6 @@
 'use client';
 import { useCart } from '@/context/CartContext';
-import { ShoppingCart, Search, MapPin, Menu, X, Leaf, Package, LogOut, User, LayoutDashboard, Truck, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Search, MapPin, Menu, X, Leaf, Package, LogOut, User, LayoutDashboard, Truck } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
@@ -155,10 +155,12 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
                   My Profile
                 </Link>
                 {(session.user as any).role !== 'admin' && (
-                  <Link href="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                    <Package size={16} />
-                    My Orders
-                  </Link>
+                  <>
+                    <Link href="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
+                      <Package size={16} />
+                      My Orders
+                    </Link>
+                  </>
                 )}
                 <button 
                   onClick={() => {

@@ -18,7 +18,8 @@ import {
   Home,
   ExternalLink,
   Newspaper,
-  Ticket
+  Ticket,
+  Image
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +31,7 @@ const SIDEBAR_ITEMS = [
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Coupons", href: "/admin/coupons", icon: Ticket },
   { name: "News", href: "/admin/news", icon: Newspaper },
+  { name: "Hero Banners", href: "/admin/hero", icon: Image },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

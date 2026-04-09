@@ -30,20 +30,49 @@ export default function CheckoutPage() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
 
-  const [modalConfig, setModalConfig] = useState<{
-    isOpen: boolean; title: string; message: string; type: 'danger' | 'warning' | 'info';
-  }>({ isOpen: false, title: "", message: "", type: 'warning' });
-
-  const [storeSettings, setStoreSettings] = useState<any>(null);
-  const [shippingFee, setShippingFee] = useState(0);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [useWallet, setUseWallet] = useState(false);
-
   // Coupon Logic State
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponError, setCouponError] = useState("");
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+  const [isCouponsModalOpen, setIsCouponsModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/public/coupons")
+      .then(res => res.json())
+      .then(data => { if (data.success) setAvailableCoupons(data.coupons); })
+      .catch(console.error);
+  }, []);
+
+  const handleApplySelectedCoupon = async (code: string) => {
+    setCoupon(code);
+    setIsCouponsModalOpen(false);
+    // Trigger validation with the new code
+    setIsValidatingCoupon(true);
+    setCouponError("");
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code, subtotal: totalPrice })
+      });
+      const data = await res.json();
+      if (data.isValid) {
+        setDiscountAmount(data.discountAmount);
+        setAppliedCoupon(data.code);
+        setCouponError("");
+      } else {
+        setCouponError(data.message || "Invalid coupon");
+        setDiscountAmount(0);
+        setAppliedCoupon(null);
+      }
+    } catch (e) {
+      setCouponError("Failed to validate coupon");
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -300,6 +329,14 @@ export default function CheckoutPage() {
                     {isValidatingCoupon ? <Loader2 size={16} className="animate-spin" /> : "Apply"}
                   </button>
                 </div>
+                {availableCoupons.length > 0 && !appliedCoupon && (
+                  <button 
+                    onClick={() => setIsCouponsModalOpen(true)}
+                    className="text-[10px] font-black text-[#CC0000] uppercase tracking-widest flex items-center gap-1 hover:underline"
+                  >
+                    <Plus size={10} /> View available coupons
+                  </button>
+                )}
                 {couponError && <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">{couponError}</p>}
                 {appliedCoupon && <p className="text-[10px] text-green-600 font-bold ml-1 mt-1">Coupon "{appliedCoupon}" applied!</p>}
                 <div>
@@ -469,6 +506,72 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Available Coupons Modal */}
+      <AnimatePresence>
+        {isCouponsModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCouponsModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl w-full max-w-md overflow-hidden relative shadow-2xl"
+            >
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0">
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">Available Coupons</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select one to apply</p>
+                </div>
+                <button onClick={() => setIsCouponsModalOpen(false)} className="p-2 hover:bg-slate-50 rounded-xl text-slate-400">
+                  <Minus size={20} className="rotate-45" />
+                </button>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
+                {availableCoupons.map((c) => {
+                  const isApplicable = totalPrice >= c.minOrderAmount;
+                  return (
+                    <div 
+                      key={c._id} 
+                      className={`p-4 rounded-2xl border-2 transition-all ${
+                        isApplicable ? 'border-slate-100 bg-white hover:border-teal-200 group' : 'border-slate-50 bg-slate-50 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="px-3 py-1 bg-teal-50 text-teal-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-teal-100 mb-2">
+                           {c.code}
+                        </div>
+                        {isApplicable && (
+                          <button 
+                            onClick={() => handleApplySelectedCoupon(c.code)}
+                            className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline"
+                          >
+                            Apply Now
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-sm font-bold text-slate-700">
+                        Get {c.discountType === 'percentage' ? `${c.discountValue}%` : `৳${c.discountValue}`} Off
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-bold mt-1">
+                        {isApplicable 
+                          ? `Valid on orders above ৳${c.minOrderAmount}` 
+                          : `Add ৳${c.minOrderAmount - totalPrice} more to use this coupon`}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <ConfirmationModal
         isOpen={modalConfig.isOpen}
