@@ -20,8 +20,7 @@ export default function ProfilePage() {
       city: "",
       zipCode: "",
     },
-    walletBalance: 0,
-    referralCode: ""
+    walletBalance: 0
   });
 
   const [copied, setCopied] = useState(false);
@@ -52,8 +51,7 @@ export default function ProfilePage() {
             city: data.user.address?.city || "",
             zipCode: data.user.address?.zipCode || "",
           },
-          walletBalance: data.user.walletBalance || 0,
-          referralCode: data.user.referralCode || ""
+          walletBalance: data.user.walletBalance || 0
         });
       }
     } catch (error) {
@@ -127,32 +125,13 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Wallet & Referral Card */}
-            {(session?.user as any)?.role !== 'admin' && formData.referralCode && (
+            {/* Wallet & Referral Card */}            {(session?.user as any)?.role !== 'admin' && (
               <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden">
                 <div className="relative z-10">
                   <h3 className="text-sm font-bold uppercase tracking-widest mb-1 opacity-90">Digital Wallet</h3>
-                  <div className="text-4xl font-black mb-6 flex items-start gap-1">
+                  <div className="text-4xl font-black flex items-start gap-1">
                      <span className="text-2xl mt-1 opacity-80">৳</span>
                      {formData.walletBalance}
-                  </div>
-
-                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20">
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-2 opacity-90">Your Referral Code</p>
-                    <div 
-                      className="flex items-center justify-between bg-white/20 rounded-xl p-3 cursor-pointer hover:bg-white/30 transition-colors"
-                      onClick={() => {
-                        navigator.clipboard.writeText(formData.referralCode);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                    >
-                      <span className="font-black tracking-widest">{formData.referralCode}</span>
-                      {copied ? <CheckCircle2 size={16} /> : <span className="text-xs font-bold uppercase tracking-wider">Copy</span>}
-                    </div>
-                    <p className="text-xs mt-3 leading-relaxed opacity-90 font-medium">
-                      Give this code to a friend. When they sign up, you <strong className="text-white font-black underline">both get ৳50</strong> instantly!
-                    </p>
                   </div>
                 </div>
                 

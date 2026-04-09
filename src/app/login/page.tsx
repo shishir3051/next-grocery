@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { LogIn, Mail, Lock, Loader2, ArrowRight } from "lucide-react";
+import { LogIn, Mail, Lock, Loader2, ArrowRight, ChevronLeft } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,8 +44,17 @@ export default function LoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+        className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 relative"
       >
+        {/* Back to Home */}
+        <Link 
+          href="/" 
+          className="absolute top-6 left-6 p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all group z-10"
+          title="Back to Home"
+        >
+          <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+        </Link>
+
         <div className="p-8 md:p-10">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-50 rounded-2xl mb-4">

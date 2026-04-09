@@ -6,8 +6,12 @@ import Footer from "./Footer";
 export default function FooterWrapper() {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
+  const isAuth = pathname === "/login" || pathname === "/register";
+  
+  // Only the home page currently features the fixed categories sidebar
+  const showSidebarOffset = pathname === "/";
 
-  if (isAdmin) return null;
+  if (isAdmin || isAuth) return null;
 
-  return <Footer />;
+  return <Footer showSidebarOffset={showSidebarOffset} />;
 }

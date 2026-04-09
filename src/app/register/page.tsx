@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Mail, Lock, User, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Loader2, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
@@ -12,7 +12,6 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [referralCode, setReferralCode] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -29,7 +28,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, referralCode }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       const data = await res.json();
@@ -92,8 +91,17 @@ export default function RegisterPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+        className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 relative"
       >
+        {/* Back to Home */}
+        <Link 
+          href="/" 
+          className="absolute top-6 left-6 p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all group z-10"
+          title="Back to Home"
+        >
+          <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+        </Link>
+
         <div className="p-8 md:p-10">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-50 rounded-2xl mb-4">
@@ -181,25 +189,6 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1 flex justify-between">
-                    <span>Referral Code</span>
-                    <span className="text-slate-400 font-normal">Optional</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={referralCode}
-                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                      placeholder="e.g. FRESH-XXXXXX"
-                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold tracking-wider focus:ring-2 focus:ring-teal-500 transition-all outline-none placeholder:font-normal placeholder:tracking-normal uppercase"
-                    />
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
-                       <span className="text-teal-600 font-black text-xs leading-none">৳</span>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-teal-600 font-bold px-1 uppercase tracking-widest">Enter a friend's code to both get ৳50</p>
-                </div>
 
                 <button
                   type="submit"

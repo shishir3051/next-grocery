@@ -37,16 +37,22 @@ const footerLinks = {
   ]
 };
 
-export default function Footer() {
+interface FooterProps {
+  showSidebarOffset?: boolean;
+}
+
+export default function Footer({ showSidebarOffset }: FooterProps) {
   return (
-    <footer className="bg-slate-50 pt-20 pb-10 border-t border-slate-200">
+    <footer className={`bg-slate-50 pt-20 pb-10 border-t border-slate-200 transition-all duration-300 ${
+      showSidebarOffset ? 'md:ml-[var(--sidebar-width)]' : ''
+    }`}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           {/* Column 1: Brand & Contact */}
           <div className="space-y-6 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-600/20">
-                <span className="text-white text-xl font-black">F</span>
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xl font-black">F</span>
               </div>
               <span className="text-2xl font-black text-slate-800 tracking-tight">FreshBasket</span>
             </Link>

@@ -30,7 +30,7 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
       className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm"
       style={{ height: 'var(--navbar-height)' }}
     >
-      <div className="h-full flex items-center gap-3 px-4 max-w-full">
+      <div className="h-full flex items-center gap-2 px-2 sm:px-4 max-w-full">
         {/* Mobile menu toggle */}
         <button
           onClick={onMenuToggle}
@@ -44,7 +44,7 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-sm">
             <Leaf size={16} className="text-white" />
           </div>
-          <span className="text-xl font-black text-slate-800 tracking-tight hidden sm:block">
+         <span className="text-xl font-black text-slate-800 tracking-tight hidden md:block">
             Fresh<span className="text-teal-500">Basket</span>
           </span>
         </a>
@@ -74,12 +74,12 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
           )}
         </AnimatePresence>
 
-        {/* Search Bar */}
-        <div className={`flex-1 relative transition-all ${isSearchFocused ? 'scale-[1.01]' : ''}`}>
+        {/* Search Bar - Center Aligned & Bounded */}
+        <div className={`flex-1 min-w-0 relative transition-all ${isSearchFocused ? 'scale-[1.01]' : ''}`}>
           <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all bg-slate-50 ${
             isSearchFocused ? 'border-teal-400 bg-white shadow-md shadow-teal-100' : 'border-slate-200'
           }`}>
-            <div className="flex items-center gap-1.5 pr-2 border-r border-slate-200 mr-1 hidden sm:flex">
+            <div className="flex items-center gap-1.5 pr-2 border-r border-slate-200 mr-1 hidden md:flex">
               <MapPin size={12} className="text-teal-500" />
               <span className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[80px]">{location}</span>
             </div>
@@ -87,7 +87,7 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
             <input
               ref={searchRef}
               type="text"
-              placeholder={`Search for items in ${location}...`}
+              placeholder={`Search for items for order.`}
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
@@ -106,7 +106,7 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
         </div>
 
         {/* User Account / Auth */}
-        <div className="hidden md:flex items-center gap-2">
+      <div className="flex items-center gap-1 flex-shrink-0">
           {status === 'authenticated' ? (
             <div className="relative group">
               <button className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
@@ -149,17 +149,16 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
           ) : (
             <Link 
               href="/login"
-              className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all"
+              className="px-3 py-2 md:px-5 md:py-2.5 text-sm font-bold text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all flex items-center gap-2"
             >
-              Log In
+              <User size={18} className="md:hidden" />
+              <span className="hidden md:block">Log In</span>
             </Link>
           )}
         </div>
-
-        {/* Cart Button */}
         <button
           onClick={() => setIsCartOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-teal-200 hover:shadow-lg hover:shadow-teal-200 flex-shrink-0 relative"
+          className="flex items-center gap-1 px-2 sm:px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-teal-200 hover:shadow-lg hover:shadow-teal-200 flex-shrink-0 relative"
         >
           <ShoppingCart size={17} />
           <span className="hidden sm:block">৳{subtotal.toFixed(0)}</span>
