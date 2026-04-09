@@ -30,7 +30,7 @@ export default function DeliveryDashboard() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && session.user.role !== 'delivery' && session.user.role !== 'admin') {
+    } else if (status === "authenticated" && session?.user?.role !== 'delivery' && session?.user?.role !== 'admin') {
       router.push("/");
     } else if (status === "authenticated") {
       fetchMyOrders();
@@ -188,8 +188,6 @@ export default function DeliveryDashboard() {
           ))
         )}
       </div>
-
-      {/* Quick Stats Filter/Footer Placeholder if needed */}
     </div>
   );
 }
