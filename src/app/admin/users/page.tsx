@@ -184,17 +184,18 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       {/* Header & Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-black text-slate-800">User Management</h2>
-          <p className="text-sm text-slate-500 font-medium">Manage your {users.length} registered users and system administrators.</p>
+          <h2 className="text-xl md:text-2xl font-black text-slate-800">User Management</h2>
+          <p className="text-xs md:text-sm text-slate-500 font-medium">Manage your {users.length} registered users and system administrators.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 flex-1 max-w-2xl justify-end">
-            <div className="relative flex-1 w-full max-w-md">
+        
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input 
                 type="text" 
-                placeholder="Search by name or email..." 
+                placeholder="Search users..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all shadow-sm"
@@ -202,9 +203,9 @@ export default function AdminUsersPage() {
             </div>
             <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20 whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20 whitespace-nowrap"
             >
-              <Plus size={16} /> Create User
+              <Plus size={16} /> <span className="md:inline">Create User</span>
             </button>
         </div>
       </div>
@@ -214,9 +215,9 @@ export default function AdminUsersPage() {
           <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
         </div>
       ) : (
-        <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+        <div className="bg-white rounded-2xl md:rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto scrollbar-hide">
+            <table className="w-full text-left min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">User Profile</th>
