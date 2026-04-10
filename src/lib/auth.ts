@@ -47,10 +47,12 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any; user: any }) {
+    async jwt({ token, user, trigger, session }: { token: any; user: any; trigger?: string; session?: any }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        // Intentionally omitting user.image from token.picture here
+        // to avoid crashing HTTP headers with massive 2MB base64 cookies!
       }
       return token;
     },
@@ -58,6 +60,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        // Specifically omitting image from session because NextAuth crashes 
+        // when trying to serialize 2MB+ Base64 strings over the network.
       }
       return session;
     }

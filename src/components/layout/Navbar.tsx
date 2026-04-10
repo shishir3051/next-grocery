@@ -125,8 +125,12 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
               >
-                <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-sm uppercase">
-                  {session.user?.name?.charAt(0)}
+                <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-sm uppercase overflow-hidden border border-teal-100">
+                  {session.user?.image ? (
+                    <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    session.user?.name?.charAt(0) || <User size={16} />
+                  )}
                 </div>
                 <div className="text-left hidden lg:block">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Account</p>
@@ -138,13 +142,22 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
               <div className={`absolute top-full right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 transition-all z-50 ${
                 isUserMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible lg:group-hover:opacity-100 lg:group-hover:visible'
               }`}>
-                {(session.user as any).role === 'admin' && (
-                  <Link href="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-teal-600 font-bold hover:bg-teal-50 transition-all border-b border-slate-50">
-                    <LayoutDashboard size={16} />
-                    Admin Dashboard
-                  </Link>
-                )}
-                {(session.user as any).role === 'delivery' && (
+                {(session.user as any).role === 'admin' ? (
+                  <>
+                    <Link href="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-teal-600 font-bold hover:bg-teal-50 transition-all border-b border-slate-50">
+                      <LayoutDashboard size={16} />
+                      Admin Dashboard
+                    </Link>
+                    <Link href="/admin/users" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
+                      <User size={16} />
+                      User Management
+                    </Link>
+                    <Link href="/admin/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">
+                      <Package size={16} />
+                      Sales Reports
+                    </Link>
+                  </>
+                ) : (session.user as any).role === 'delivery' && (
                   <Link href="/delivery" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 font-bold hover:bg-emerald-50 transition-all border-b border-slate-50">
                     <Truck size={16} />
                     Delivery Dashboard
@@ -155,12 +168,10 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
                   My Profile
                 </Link>
                 {(session.user as any).role !== 'admin' && (
-                  <>
-                    <Link href="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                      <Package size={16} />
-                      My Orders
-                    </Link>
-                  </>
+                  <Link href="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
+                    <Package size={16} />
+                    My Orders
+                  </Link>
                 )}
                 <button 
                   onClick={() => {
@@ -184,18 +195,20 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
             </Link>
           )}
         </div>
-        <button
-          onClick={() => setIsCartOpen(true)}
-          className="flex items-center gap-1 px-2 sm:px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-teal-200 hover:shadow-lg hover:shadow-teal-200 flex-shrink-0 relative"
-        >
-          <ShoppingCart size={17} />
-          <span className="hidden sm:block">৳{subtotal.toFixed(0)}</span>
-          {totalItems > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-slate-900 text-xs font-bold rounded-full flex items-center justify-center border-2 border-white badge-pulse">
-              {totalItems}
-            </span>
-          )}
-        </button>
+        {(status !== 'authenticated' || (session?.user as any)?.role !== 'admin') && (
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="flex items-center gap-1 px-2 sm:px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-teal-200 hover:shadow-lg hover:shadow-teal-200 flex-shrink-0 relative"
+          >
+            <ShoppingCart size={17} />
+            <span className="hidden sm:block">৳{subtotal.toFixed(0)}</span>
+            {totalItems > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-slate-900 text-xs font-bold rounded-full flex items-center justify-center border-2 border-white badge-pulse">
+                {totalItems}
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </header>
   );

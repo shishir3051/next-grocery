@@ -4,17 +4,18 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { User, Mail, MapPin, Phone, Save, Loader2, CheckCircle2, ChevronRight } from "lucide-react";
+import { User, Mail, MapPin, Phone, Save, Loader2, CheckCircle2, ChevronRight, Camera } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    image: "",
     address: {
       street: "",
       city: "",
@@ -46,6 +47,7 @@ export default function ProfilePage() {
           name: data.user.name || "",
           email: data.user.email || "",
           phone: data.user.address?.phone || "",
+          image: data.user.image || "",
           address: {
             street: data.user.address?.street || "",
             city: data.user.address?.city || "",
@@ -58,6 +60,21 @@ export default function ProfilePage() {
       console.error("Fetch profile error:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({ type: "error", text: "Image size must be less than 2MB" });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -74,6 +91,7 @@ export default function ProfilePage() {
       });
 
       if (res.ok) {
+        await update();
         setMessage({ type: "success", text: "Profile updated successfully!" });
         setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       } else {
@@ -106,8 +124,20 @@ export default function ProfilePage() {
           {/* Sidebar Info */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm text-center">
-              <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-inner">
-                <span className="text-2xl font-black text-teal-600">{formData.name.charAt(0).toUpperCase()}</span>
+              <div className="relative w-20 h-20 mx-auto mb-4">
+                <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center border-4 border-white shadow-inner overflow-hidden">
+                  {formData.image ? (
+                    <img src={formData.image} alt="Profile" className="w-full h-full object-cover" />
+                  ) : session?.user?.image ? (
+                    <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-black text-teal-600">{formData.name ? formData.name.charAt(0).toUpperCase() : "-"}</span>
+                  )}
+                </div>
+                <label className="absolute bottom-0 right-0 bg-white border border-slate-200 shadow-sm rounded-full p-1.5 cursor-pointer hover:bg-slate-50 transition-colors" title="Upload New Avatar">
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <Camera size={14} className="text-slate-600" />
+                </label>
               </div>
               <h2 className="text-xl font-bold text-slate-800">{formData.name}</h2>
               <p className="text-sm text-slate-500">{formData.email}</p>
@@ -116,7 +146,27 @@ export default function ProfilePage() {
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Quick Links</h3>
               <div className="space-y-2">
-                {(session?.user as any)?.role !== 'admin' && (
+                {(session?.user as any)?.role === 'admin' ? (
+                  <>
+                    <Link href="/admin/users" className="flex items-center justify-between p-3 rounded-xl bg-teal-50 hover:bg-teal-100 transition-all text-sm font-bold text-teal-700 border border-teal-100">
+                      User Management
+                      <ChevronRight size={16} className="text-teal-500" />
+                    </Link>
+                    <Link href="/admin/orders" className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all text-sm font-bold text-slate-700">
+                      Sales Reports
+                      <ChevronRight size={16} className="text-slate-300" />
+                    </Link>
+                    <Link href="/admin" className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all text-sm font-bold text-slate-700">
+                      Admin Settings
+                      <ChevronRight size={16} className="text-slate-300" />
+                    </Link>
+                  </>
+                ) : (session?.user as any)?.role === 'delivery' ? (
+                  <Link href="/delivery" className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-all text-sm font-bold text-emerald-700 border border-emerald-100">
+                    Delivery Dashboard
+                    <ChevronRight size={16} className="text-emerald-500" />
+                  </Link>
+                ) : (
                   <Link href="/orders" className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all text-sm font-bold text-slate-700">
                     My Orders
                     <ChevronRight size={16} className="text-slate-300" />
@@ -125,7 +175,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Wallet & Referral Card */}            {(session?.user as any)?.role !== 'admin' && (
+            {/* Wallet & Referral Card */}
+            {(session?.user as any)?.role !== 'admin' && (
               <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden">
                 <div className="relative z-10">
                   <h3 className="text-sm font-bold uppercase tracking-widest mb-1 opacity-90">Digital Wallet</h3>

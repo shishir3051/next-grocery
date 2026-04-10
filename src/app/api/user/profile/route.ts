@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, address, phone } = await request.json();
+    const { name, address, phone, image } = await request.json();
 
     await dbConnect();
     const user = await User.findOneAndUpdate(
@@ -39,6 +39,7 @@ export async function PUT(request: NextRequest) {
       { 
         $set: { 
           name, 
+          image,
           "address.street": address?.street,
           "address.city": address?.city,
           "address.zipCode": address?.zipCode,
