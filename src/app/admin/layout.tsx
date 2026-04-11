@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const SIDEBAR_ITEMS = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Products", href: "/admin/products", icon: ShoppingBag },
+  { name: "Categories", href: "/admin/categories", icon: LayoutDashboard },
   { name: "Orders", href: "/admin/orders", icon: Package },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Coupons", href: "/admin/coupons", icon: Ticket },

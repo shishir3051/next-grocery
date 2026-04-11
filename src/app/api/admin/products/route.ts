@@ -28,7 +28,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const products = await Product.find().sort({ createdAt: -1 });
+    const products = await Product.find().populate('category', 'name slug').sort({ createdAt: -1 });
     return NextResponse.json({ products });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -107,10 +107,9 @@ export async function PUT(request: NextRequest) {
       if (resolved) updateData.category = resolved;
     }
 
-    // Ensure numbers are numbers
-    if (updateData.price) updateData.price = Number(updateData.price);
-    if (updateData.discountPrice !== undefined) updateData.discountPrice = Number(updateData.discountPrice) || 0;
-    if (updateData.stock !== undefined) updateData.stock = Number(updateData.stock) || 0;
+    if (updateData.name) {
+      updateData.slug = updateData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
     

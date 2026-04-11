@@ -62,14 +62,13 @@ export default function Sidebar({ categories, activeSlug, onSelect }: SidebarPro
                 {/* Parent Category */}
                 <button
                   onClick={() => {
+                    onSelect(cat.slug);
                     if (hasChildren) {
                       toggle(cat.slug);
-                    } else {
-                      onSelect(cat.slug);
                     }
                   }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    activeSlug === cat.slug && !hasChildren
+                    activeSlug === cat.slug
                       ? 'bg-teal-500 text-white shadow-sm'
                       : 'text-slate-700 hover:bg-teal-50 hover:text-teal-700'
                   }`}

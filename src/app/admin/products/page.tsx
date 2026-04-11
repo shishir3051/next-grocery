@@ -39,7 +39,7 @@ export default function AdminProductsPage() {
     name: "",
     price: "",
     discountPrice: "",
-    category: "Vegetables",
+    category: "",
     unit: "1 kg",
     stock: "100",
     description: "",
@@ -75,9 +75,20 @@ export default function AdminProductsPage() {
       const res = await fetch("/api/categories");
       const data = await res.json();
       if (res.ok) {
-        setCategories(data.categories || []);
-        if (data.categories?.length > 0 && !formData.category) {
-            setFormData(prev => ({ ...prev, category: data.categories[0].name }));
+        // Flatten the category tree for the dropdown
+        const flatCategories: any[] = [];
+        data.categories.forEach((cat: any) => {
+          flatCategories.push({ ...cat, displayName: cat.name });
+          if (cat.subcategories && cat.subcategories.length > 0) {
+            cat.subcategories.forEach((sub: any) => {
+              flatCategories.push({ ...sub, displayName: `${cat.name} — ${sub.name}` });
+            });
+          }
+        });
+        
+        setCategories(flatCategories);
+        if (flatCategories.length > 0) {
+            setFormData(prev => ({ ...prev, category: prev.category || flatCategories[0].name }));
         }
       }
     } catch (e) { console.error(e); }
@@ -114,7 +125,7 @@ export default function AdminProductsPage() {
         setIsModalOpen(false);
         setEditingProduct(null);
         setFormData({
-            name: "", price: "", discountPrice: "", category: "Vegetables", 
+            name: "", price: "", discountPrice: "", category: categories[0]?.name || "", 
             unit: "1 kg", stock: "100", description: "", imageData: "",
             isOrganic: false, isHalal: false
         });
@@ -148,11 +159,12 @@ export default function AdminProductsPage() {
 
   const openEditModal = (product: any) => {
     setEditingProduct(product);
+    const categoryName = typeof product.category === 'object' ? product.category?.name : product.category;
     setFormData({
       name: product.name,
       price: product.price.toString(),
       discountPrice: (product.discountPrice || "").toString(),
-      category: product.category,
+      category: categoryName || "",
       unit: product.unit,
       stock: product.stock.toString(),
       description: product.description || "",
@@ -179,10 +191,11 @@ export default function AdminProductsPage() {
     if (file) handleImageFile(file);
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.category && p.category.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredProducts = products.filter(p => {
+    const catName = typeof p.category === 'object' ? p.category?.name : p.category;
+    return p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (catName && catName.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -268,7 +281,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
-                        {product.category || 'Uncategorized'}
+                        {(typeof product.category === 'object' ? product.category?.name : product.category) || 'Uncategorized'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -378,7 +391,7 @@ export default function AdminProductsPage() {
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Category</label>
                     <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none cursor-pointer">
                       {categories.map((cat: any) => (
-                        <option key={cat._id} value={cat.name}>{cat.name}</option>
+                        <option key={cat._id} value={cat.name}>{cat.displayName || cat.name}</option>
                       ))}
                     </select>
                   </div>

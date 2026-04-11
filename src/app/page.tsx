@@ -104,38 +104,51 @@ export default function HomePage() {
     }
   }, []);
 
-  // Fetch products when activeSlug changes
+  // Main Data Fetching Effect (Category or Search)
   useEffect(() => {
+    let isCancelled = false;
     setLoading(true);
+
+    const performFetch = async () => {
+      try {
+        let url = "";
+        if (searchQuery.trim()) {
+           url = `/api/products?search=${encodeURIComponent(searchQuery)}`;
+           setAiResults(null); // Reset AI when manually searching
+        } else {
+           url = activeSlug === 'all' ? '/api/products' : `/api/products?category=${activeSlug}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (!isCancelled) {
+          setProducts(data?.products || []);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error("Fetch error:", err);
+          setLoading(false);
+        }
+      }
+    };
+
+    // Debounce manual search
+    const timer = searchQuery.trim() ? setTimeout(performFetch, 300) : null;
+    if (!timer) performFetch();
+
+    return () => {
+      isCancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeSlug, searchQuery]);
+
+  // Reset search when category changes
+  useEffect(() => {
     setSearchQuery('');
     setAiResults(null);
-    const url = activeSlug === 'all' ? '/api/products' : `/api/products?category=${activeSlug}`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => setProducts(data?.products || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
   }, [activeSlug]);
-
-  // Search with debounce
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      // Re-fetch for current category
-      const url = activeSlug === 'all' ? '/api/products' : `/api/products?category=${activeSlug}`;
-      fetch(url)
-        .then(r => r.json())
-        .then(data => setProducts(data?.products || []))
-        .catch(console.error);
-      return;
-    }
-    const timer = setTimeout(() => {
-      fetch(`/api/products?search=${encodeURIComponent(searchQuery)}`)
-        .then(r => r.json())
-        .then(data => setProducts(data?.products || []))
-        .catch(console.error);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const handleSeed = async () => {
     setIsSeeding(true);
@@ -157,9 +170,19 @@ export default function HomePage() {
 
   const displayedProducts = aiResults ?? products;
 
-  // Group products by category for "all" view
+  // Group products by category
   const groupedByCategory = useMemo(() => {
-    if (activeSlug !== 'all' || searchQuery || aiResults) return null;
+    // Don't group if searching or AI is active
+    if (searchQuery || aiResults) return null;
+    
+    // Check if we are in a subcategory
+    const isSubcategory = categories.some(c => 
+      c.subcategories?.some((s: any) => s.slug === activeSlug)
+    );
+    
+    // If it's a specific subcategory, show it as a flat list
+    if (isSubcategory) return null;
+
     const groups: Record<string, { title: string; products: any[] }> = {};
     displayedProducts.forEach((p: any) => {
       const catName = p.category?.name || 'Other';
@@ -167,7 +190,7 @@ export default function HomePage() {
       groups[catName].products.push(p);
     });
     return Object.values(groups);
-  }, [activeSlug, displayedProducts, searchQuery, aiResults]);
+  }, [activeSlug, displayedProducts, searchQuery, aiResults, categories]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--background)]">
@@ -262,10 +285,14 @@ export default function HomePage() {
                 title={
                   aiResults ? 'AI Recommendations' :
                   searchQuery ? `Search: "${searchQuery}"` :
-                  categories.find(c =>
-                    c.slug === activeSlug ||
-                    c.subcategories?.find((s: any) => s.slug === activeSlug)
-                  )?.name
+                  (() => {
+                    for (const c of categories) {
+                      if (c.slug === activeSlug) return c.name;
+                      const sub = c.subcategories?.find((s: any) => s.slug === activeSlug);
+                      if (sub) return sub.name;
+                    }
+                    return 'Products';
+                  })()
                 }
               />
             )}
