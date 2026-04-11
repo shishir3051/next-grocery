@@ -93,6 +93,24 @@ export default function CheckoutPage() {
         .then(data => { if (data.user) setWalletBalance(data.user.walletBalance || 0); })
         .catch(console.error);
     }
+
+    // Autofill address from userLocation
+    const savedLoc = localStorage.getItem('userLocation');
+    if (savedLoc) {
+      const parts = savedLoc.split(',').map(p => p.trim());
+      if (parts.length >= 2) {
+        setAddress(prev => ({
+          ...prev,
+          street: parts[0],
+          city: parts[parts.length - 1]
+        }));
+      } else {
+        setAddress(prev => ({
+          ...prev,
+          city: savedLoc
+        }));
+      }
+    }
   }, [status]);
 
   useEffect(() => {

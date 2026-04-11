@@ -73,7 +73,25 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-20">
+        <div className="absolute top-2 right-2 flex items-start gap-1.5 z-20">
+          <div className="flex flex-col items-end gap-1">
+            {product.isOrganic && (
+              <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full shadow-sm backdrop-blur-sm">
+                🌿 Organic
+              </span>
+            )}
+            {product.isHalal && (
+              <span className="px-2 py-0.5 bg-teal-600 text-white text-[8px] font-bold rounded-full shadow-sm backdrop-blur-sm">
+                ☪ Halal
+              </span>
+            )}
+            {product.stock <= 0 && (
+              <span className="px-2 py-0.5 bg-slate-800 text-white text-[8px] font-bold rounded-full shadow-sm">
+                🚫 Out
+              </span>
+            )}
+          </div>
+
           <button 
             onClick={(e) => {
               e.preventDefault();
@@ -86,21 +104,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           >
             <Heart size={16} fill={isWishlisted ? "currentColor" : "none"} />
           </button>
-          {product.isOrganic && (
-            <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full shadow-sm backdrop-blur-sm">
-              🌿 Organic
-            </span>
-          )}
-          {product.isHalal && (
-            <span className="px-2 py-0.5 bg-teal-600 text-white text-[8px] font-bold rounded-full shadow-sm backdrop-blur-sm">
-              ☪ Halal
-            </span>
-          )}
-          {product.stock <= 0 && (
-            <span className="px-2 py-0.5 bg-slate-800 text-white text-[8px] font-bold rounded-full shadow-sm">
-              🚫 Out
-            </span>
-          )}
         </div>
 
         {/* Quick Add Overlay - shows on hover when qty=0 and in stock */}
