@@ -1,0 +1,418 @@
+<title>FreshBasket UI Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a single reading column for the narrative, widening to a two-up comparison band for each screen. */
+:root {
+  --bg: #f5f7f6;
+  --surface: #ffffff;
+  --fg: #12201d;
+  --muted: #4f5f5b;
+  --line: #dce4e1;
+  --brand: #0f766e;
+  --brand-soft: #e3f3f0;
+  --accent: #b45309;
+  --accent-soft: #fdf1dc;
+  --bad: #b42318;
+  --bad-soft: #fde8e6;
+  --good: #047857;
+  --good-soft: #def5ea;
+  --shot-bg: #e9eeec;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1615; --surface: #16201e; --fg: #e6eeec; --muted: #a3b3af; --line: #2a3835;
+    --brand: #5eead4; --brand-soft: #123532; --accent: #fbbf24; --accent-soft: #3a2a0c;
+    --bad: #fca5a5; --bad-soft: #3b1715; --good: #6ee7b7; --good-soft: #0f3326; --shot-bg: #0b1110;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1615; --surface: #16201e; --fg: #e6eeec; --muted: #a3b3af; --line: #2a3835;
+  --brand: #5eead4; --brand-soft: #123532; --accent: #fbbf24; --accent-soft: #3a2a0c;
+  --bad: #fca5a5; --bad-soft: #3b1715; --good: #6ee7b7; --good-soft: #0f3326; --shot-bg: #0b1110;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 17px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 48px 80px; display: grid; gap: 64px; }
+.prose { max-width: 70ch; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.25rem; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font: 500 0.78rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
+.lede { font-size: 1.15rem; color: var(--muted); }
+section { display: grid; gap: 20px; }
+a { color: var(--brand); }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--brand-soft); padding: 0.1em 0.35em; border-radius: 4px; }
+
+/* Header */
+header.top { display: grid; gap: 18px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; color: var(--muted); font-size: 0.95rem; }
+.meta strong { color: var(--fg); font-weight: 600; }
+
+/* Metrics table */
+.metrics { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-variant-numeric: tabular-nums; }
+.metrics th, .metrics td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); }
+.metrics tr:last-child td { border-bottom: 0; }
+.metrics th { font: 600 0.85rem/1.2 var(--font-body); color: var(--muted); background: color-mix(in srgb, var(--bg) 60%, var(--surface)); }
+.metrics td.num { font-family: var(--font-mono); white-space: nowrap; }
+.metrics td.before { color: var(--bad); }
+.metrics td.after { color: var(--good); font-weight: 600; }
+.metrics td.note { color: var(--muted); font-size: 0.95rem; }
+.table-scroll { overflow-x: auto; }
+
+/* Problem list */
+.problems { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.problems li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.tag { font: 500 0.72rem/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 5px 8px; border-radius: 6px; white-space: nowrap; }
+.tag.bad { background: var(--bad-soft); color: var(--bad); }
+.tag.warn { background: var(--accent-soft); color: var(--accent); }
+
+/* Design system */
+.ds { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.ds > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 12px; align-content: start; }
+.ds h3 { font-size: 1.05rem; }
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.sw { aspect-ratio: 1; border-radius: 8px; border: 1px solid rgba(0,0,0,0.08); }
+.sw-row { display: grid; gap: 4px; }
+.sw-label { font: 500 0.75rem/1.3 var(--font-mono); color: var(--muted); }
+.type-sample { display: grid; gap: 6px; font-family: "Segoe UI", system-ui, sans-serif; }
+.radii { display: flex; gap: 10px; flex-wrap: wrap; }
+.radii span { width: 56px; height: 40px; border: 2px solid var(--brand); background: var(--brand-soft); display: grid; place-items: center; font: 500 0.7rem/1 var(--font-mono); color: var(--fg); }
+
+/* Screens */
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.controls span { color: var(--muted); font-size: 0.95rem; margin-right: 4px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { font: 600 0.9rem/1 var(--font-body); padding: 10px 14px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--brand); color: var(--surface); }
+.seg button:focus-visible, .expand:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+
+.screens { display: grid; gap: 56px; }
+.group-note { color: var(--muted); margin-top: -36px; }
+.group-title { font-size: clamp(1.3rem, 2.5vw, 1.6rem); padding-top: 12px; border-top: 2px solid var(--brand); color: var(--brand); }
+.screen { display: grid; gap: 16px; }
+.screen-head { display: grid; gap: 8px; }
+.screen-head .vp { font: 500 0.78rem/1 var(--font-mono); color: var(--muted); }
+.changes { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; color: var(--fg); max-width: 80ch; }
+.changes li::marker { color: var(--brand); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pair.mobile { grid-template-columns: repeat(2, minmax(0, 360px)); justify-content: start; }
+body[data-view="before"] .pair figure.after, body[data-view="after"] .pair figure.before { display: none; }
+body[data-view="before"] .pair, body[data-view="after"] .pair { grid-template-columns: minmax(0, 1fr); }
+body[data-view="before"] .pair.mobile, body[data-view="after"] .pair.mobile { grid-template-columns: minmax(0, 390px); }
+figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+figcaption { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.label { font: 600 0.8rem/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; border-radius: 6px; }
+figure.before .label { background: var(--bad-soft); color: var(--bad); }
+figure.after .label { background: var(--good-soft); color: var(--good); }
+.frame { background: var(--shot-bg); border: 1px solid var(--line); border-radius: 12px; max-height: 620px; overflow: auto; }
+.frame.full { max-height: none; }
+.frame img { display: block; width: 100%; height: auto; max-width: 100%; }
+.expand { font: 600 0.85rem/1 var(--font-body); color: var(--brand); background: none; border: 0; cursor: pointer; padding: 6px 2px; }
+
+/* Engineering notes */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 10px; align-content: start; }
+.card ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+pre { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow-x: auto; font: 500 0.88rem/1.6 var(--font-mono); }
+
+@media (max-width: 760px) {
+  body { font-size: 16px; }
+  .wrap { padding-block: 28px 56px; gap: 48px; }
+  .pair, .pair.mobile { grid-template-columns: minmax(0, 1fr); }
+  .frame { max-height: 520px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">FreshBasket · Design review · 2 Nov 2026</p>
+    <h1>FreshBasket UI Redesign</h1>
+    <p class="lede prose">The store looked like several apps stitched together. Checkout had its own red brand, product rows stayed blank until a scroll animation fired, the cart drawer slid under the header, and most pages had no navigation. This pass introduces one design system and applies it to the storefront, checkout, account, content and admin screens, without changing behaviour.</p>
+    <div class="meta">
+      <span><strong>Scope:</strong> about 55 page and component files, in two rounds</span>
+      <span><strong>Captured:</strong> live app, seeded preview database, headless Edge</span>
+      <span><strong>Viewports:</strong> 1440 × 900 desktop, 390 × 844 phone</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="m-h">
+    <h2 id="m-h">The numbers</h2>
+    <p class="prose">Measured across every <code>.tsx</code> file in <code>src/</code> before the redesign and after both rounds (storefront first, then the remaining admin pages and widgets).</p>
+    <div class="table-scroll">
+      <table class="metrics">
+        <thead><tr><th scope="col">Measure</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>Off-brand red hex colours (<code>#CC0000</code> family)</td><td class="num before">52</td><td class="num after">0</td><td class="note">Checkout now uses the same brand as the store.</td></tr>
+          <tr><td>Text at 8–10 px</td><td class="num before">76</td><td class="num after">0</td><td class="note">Labels, prices and errors are now at least 12 px.</td></tr>
+          <tr><td>Arbitrary radii (<code>rounded-[2rem]</code>, <code>3xl</code>…)</td><td class="num before">71</td><td class="num after">0</td><td class="note">Four radii: 8, 12, 16 px and pill.</td></tr>
+          <tr><td><code>font-black</code> / <code>font-semibold</code></td><td class="num before">242 / 22</td><td class="num after">14 / 206</td><td class="note">Heavy weight is kept for the logo and hero display type.</td></tr>
+          <tr><td><code>text-slate-400</code> (≈2.6:1 contrast)</td><td class="num before">246</td><td class="num after">52</td><td class="note">Remaining uses are placeholders and decorative icons.</td></tr>
+          <tr><td><code>aria-label</code> on controls</td><td class="num before">0</td><td class="num after">141</td><td class="note">Icon buttons, carousel, steppers, drawers and admin actions have names.</td></tr>
+          <tr><td>ESLint problems (errors)</td><td class="num before">304 (166)</td><td class="num after">161 (115)</td><td class="note">No new errors; TypeScript passes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="p-h">
+    <h2 id="p-h">What was wrong</h2>
+    <ul class="problems">
+      <li><span class="tag bad">Broken</span><p><strong>Blank catalog.</strong> Product cards started at <code>opacity: 0</code> with a 3D rotate and only appeared via <code>whileInView</code> (<code>once: false</code>). Anything not yet animated showed as empty space, including in screenshots, link previews and for slow devices.</p></li>
+      <li><span class="tag bad">Broken</span><p><strong>Cart drawer under the header.</strong> The drawer (<code>z-40</code>) sat below the fixed header (<code>z-50</code>), hiding its title on phones. Its shadow also bled onto the right edge of every page while closed.</p></li>
+      <li><span class="tag bad">Broken</span><p><strong>Checkout summary hidden.</strong> A fixed bottom bar covered the order summary and wallet line; the disabled Confirm button was a faded pink that read as an error.</p></li>
+      <li><span class="tag warn">Inconsistent</span><p><strong>Two brands.</strong> Teal storefront, red checkout (43 hard-coded <code>#CC0000</code>), a red delivery badge in the header, purple and orange tool buttons, and an ignored Tailwind v3 config naming a third palette.</p></li>
+      <li><span class="tag warn">Inconsistent</span><p><strong>No shared navigation.</strong> The header only existed on the home page; news, offers, orders, wishlist and profile each had their own back-arrow bar or nothing.</p></li>
+      <li><span class="tag warn">Accessibility</span><p><strong>Unlabelled controls and low contrast.</strong> Zero <code>aria-label</code>s, borderless grey inputs, 8–10 px uppercase labels, and grey-400 body text.</p></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="d-h">
+    <h2 id="d-h">The design system</h2>
+    <p class="prose">Tokens live in <code>src/app/globals.css</code> as Tailwind v4 <code>@theme</code> colours, so they are real classes (<code>bg-brand-600</code>, <code>text-danger-600</code>). The written rules are in <code>docs/design/DESIGN_SYSTEM.md</code>, and <code>src/components/ui/Button.tsx</code> is the shared button.</p>
+    <div class="ds">
+      <div>
+        <h3>Colour roles (palette v2)</h3>
+        <div class="sw-row"><div class="swatches"><span class="sw" style="background:#f0fdfa"></span><span class="sw" style="background:#99f6e4"></span><span class="sw" style="background:#14b8a6"></span><span class="sw" style="background:#0f766e"></span><span class="sw" style="background:#134e4a"></span></div><span class="sw-label">brand: actions, links, prices (600 = 5.5:1 on white)</span></div>
+        <div class="sw-row"><div class="swatches"><span class="sw" style="background:#f7fee7"></span><span class="sw" style="background:#d9f99d"></span><span class="sw" style="background:#84cc16"></span><span class="sw" style="background:#4d7c0f"></span><span class="sw" style="background:#3f6212"></span></div><span class="sw-label">success (leaf): freshness, organic, confirmations</span></div>
+        <div class="sw-row"><div class="swatches"><span class="sw" style="background:#fff7ed"></span><span class="sw" style="background:#fed7aa"></span><span class="sw" style="background:#fb923c"></span><span class="sw" style="background:#ea580c"></span><span class="sw" style="background:#9a3412"></span></div><span class="sw-label">accent (tangerine): deals, savings, low stock</span></div>
+        <div class="sw-row"><div class="swatches"><span class="sw" style="background:#f3f6f3"></span><span class="sw" style="background:#dae3dc"></span><span class="sw" style="background:#8fa096"></span><span class="sw" style="background:#5f7067"></span><span class="sw" style="background:#222c27"></span></div><span class="sw-label">neutrals (sage): text, borders, canvas</span></div>
+        <div class="sw-row"><div class="swatches"><span class="sw" style="background:#fef2f2"></span><span class="sw" style="background:#fecaca"></span><span class="sw" style="background:#ef4444"></span><span class="sw" style="background:#dc2626"></span><span class="sw" style="background:#b91c1c"></span></div><span class="sw-label">danger: errors and destructive actions only</span></div>
+      </div>
+      <div>
+        <h3>Type scale (Inter in the app)</h3>
+        <div class="type-sample">
+          <span style="font-size:1.75rem;font-weight:700;letter-spacing:-0.02em">Page title 30</span>
+          <span style="font-size:1.25rem;font-weight:600">Section title 20</span>
+          <span style="font-size:0.875rem;font-weight:600">Card title 14 semibold</span>
+          <span style="font-size:0.875rem">Body 14 in slate-700</span>
+          <span style="font-size:0.75rem;color:var(--muted)">Meta 12 in slate-500, the minimum</span>
+        </div>
+      </div>
+      <div>
+        <h3>Shape and focus</h3>
+        <div class="radii"><span style="border-radius:8px">8</span><span style="border-radius:12px">12</span><span style="border-radius:16px">16</span><span style="border-radius:999px">pill</span></div>
+        <p style="color:var(--muted);font-size:0.95rem">Inputs and chips 8, buttons and cards 12, panels and drawers 16. A global <code>:focus-visible</code> ring, 40 px minimum touch targets, and reduced-motion support.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="s-h">
+    <h2 id="s-h">Screen by screen</h2>
+    <div class="controls" role="group" aria-label="Comparison view">
+      <span>Show</span>
+      <div class="seg">
+        <button type="button" data-view="both" aria-pressed="true">Side by side</button>
+        <button type="button" data-view="before" aria-pressed="false">Before</button>
+        <button type="button" data-view="after" aria-pressed="false">After</button>
+      </div>
+    </div>
+    <div class="screens" id="screens"></div>
+  </section>
+
+  <section aria-labelledby="e-h">
+    <h2 id="e-h">Engineering notes</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>Architecture</h3>
+        <ul>
+          <li>One global header: <code>SiteHeader</code> in the root layout renders <code>Navbar</code> on every storefront, content and account page. On non-home pages search submits to <code>/?q=…</code>.</li>
+          <li><code>Navbar</code> works in two modes: controlled by <code>HomeClient</code> on <code>/</code>, standalone everywhere else.</li>
+          <li>Shared primitives: <code>Button</code> (4 variants, 3 sizes, link mode) and <code>cn()</code> using the already-installed <code>clsx</code> and <code>tailwind-merge</code>.</li>
+          <li>Deleted the dead <code>tailwind.config.ts</code>; tokens are in CSS where Tailwind v4 reads them.</li>
+          <li>Admin screens share one style module, <code>components/admin/adminStyles.ts</code> (panels, tables, fields, badges, icon buttons), instead of per-page copies.</li>
+          <li>Hero banners: admins used to type Tailwind class names that Tailwind v4 never generates, so some banners rendered blank. <code>lib/heroThemes.ts</code> now provides 7 presets written as literal classes, picked from swatch cards, with a Custom option that keeps existing values.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>How it was verified</h3>
+        <ul>
+          <li>Eleven areas redesigned in parallel on separate files, each re-read by an independent reviewer that diffed against the original for behaviour changes. Reviewers found and fixed real issues: the cart drawer stopped animating under Tailwind v4's <code>translate</code> property, drag-and-drop image upload was lost in two editors, focus dropped to the page when the chat closed, and a mobile action bar covered the news form.</li>
+          <li><code>tsc --noEmit</code> clean; ESLint down from 304 to 191 problems with no new errors.</li>
+          <li>Ran the app and checked header search from another page, the admin role gate, the hero edit dialog (prefill, custom theme, Escape to close) and the console (no runtime errors).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Known gaps</h3>
+        <ul>
+          <li>Admin dialogs close with Escape but don't trap focus or return it to the button that opened them; a shared Dialog component is the next step.</li>
+          <li>The users page still changes roles with a cycle button rather than a select, because a select would change the API call.</li>
+          <li>Many products share one photo because the seed's image service (loremflickr) returned errors; that is data, not design.</li>
+          <li>The admin "before" capture shows an icon-only sidebar. That is a capture artifact: the layout read the window width before the emulated size applied. The "after" capture forces a resize, and in a real browser the labels show in both versions.</li>
+          <li>Newsletter, social and app-store buttons still have no backend.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="r-h">
+    <h2 id="r-h">Run it</h2>
+    <p class="prose">Fix <code>MONGODB_URI</code> in <code>.env.local</code> first: URL-encode special characters in the password (<code>@</code> → <code>%40</code>). Then:</p>
+    <pre>npm install
+npm run dev            # http://localhost:3000
+npm run promote-admin -- you@example.com   # first admin, then sign out and in</pre>
+    <p class="prose">The screenshots came from a separate <code>freshbasket_design_preview</code> database on the same cluster, so your own data was not touched. Drop that database when you no longer need it.</p>
+  </section>
+</div>
+
+<script>
+const SCREENS = [
+  { group: "Palette v2: Fresh market", note: "v1 used cold blue-grey neutrals and a success green almost identical to the brand teal, so the UI read as one flat colour. v2 warms the neutrals, gives freshness, deals and actions their own hues, tints the page canvas and adds layered shadows." },
+  { id: "home-desktop", title: "Home", vp: "Desktop 1440", from: "after", to: "palette", labels: ["v1 palette", "v2 palette"], changes: [
+    "Sage-tinted neutrals and a tinted canvas instead of cold slate on near-white.",
+    "Each category gets its own aisle tint in the sidebar, matched by a coloured marker on its section heading.",
+    "A brand → leaf → tangerine stripe across the top of the header as a signature." ] },
+  { id: "checkout-desktop", title: "Checkout", vp: "Desktop 1440", from: "after", to: "palette", labels: ["v1 palette", "v2 palette"], changes: [
+    "Cards separate clearly from the tinted page with softer, layered shadows.",
+    "The primary button has a subtle gradient and depth; disabled stays a calm neutral grey." ] },
+  { id: "login-desktop", title: "Log in", vp: "Desktop 1440", from: "after", to: "palette", labels: ["v1 palette", "v2 palette"], changes: [
+    "New ‘Forgot password?’ link next to the password label, and a success notice after a reset." ] },
+  { id: "admin-coupons", title: "Admin coupons", vp: "Desktop 1440", from: "after", to: "palette", labels: ["v1 palette", "v2 palette"], changes: [
+    "Status badges now use distinct hues: leaf green for active, tangerine for warnings, red only for expired." ] },
+  { group: "Storefront and account" },
+  { id: "home-desktop", title: "Home", vp: "Desktop 1440", changes: [
+    "Product cards are always visible; the 3D scroll animation is gone, hover only lifts the border and shadow.",
+    "Cards: 4:3 image, unit and Halal/Organic chips in one meta row, two-line name, sale price with struck original, full-width Add or quantity stepper.",
+    "AI search and Recipes share one secondary button style; the red delivery badge became a neutral location picker." ] },
+  { id: "home-mobile", title: "Home", vp: "Phone 390", mobile: true, changes: [
+    "Rows that were blank now render; hero controls share one row so dots no longer overlap the call to action.",
+    "Mobile category drawer has a backdrop and closes on tap or Escape." ] },
+  { id: "cart-drawer-desktop", title: "Cart drawer", vp: "Desktop 1440", changes: [
+    "Drawer and backdrop sit above the header, with dialog semantics, Escape to close and focus moved inside.",
+    "No shadow bleed when closed; width is up to 400 px instead of a fixed 380 px." ] },
+  { id: "cart-drawer-mobile", title: "Cart drawer", vp: "Phone 390", mobile: true, changes: [
+    "The title and close button are visible again (they were hidden under the header).",
+    "Steppers are 40 px tall with labelled buttons; the delivery-fee note sets expectations before checkout." ] },
+  { id: "checkout-desktop", title: "Checkout", vp: "Desktop 1440", changes: [
+    "Red brand replaced with the store brand; red now only means remove or error.",
+    "A sticky order summary on the right holds the total and Confirm button, so nothing is covered.",
+    "Readable sentence-case labels tied to inputs, optional fields marked, and a helper that says which fields are missing." ] },
+  { id: "checkout-mobile", title: "Checkout", vp: "Phone 390", mobile: true, changes: [
+    "Content gets bottom padding equal to the sticky bar, so the summary and wallet line stay reachable.",
+    "Payment options are full-width cards with clear selected state." ] },
+  { id: "login-desktop", title: "Log in", vp: "Desktop 1440", changes: [
+    "Brand mark inside the card and a labelled 'Back to shop' link instead of a bare chevron.",
+    "Bordered inputs with visible focus rings; errors use role=alert." ] },
+  { id: "register-mobile", title: "Register", vp: "Phone 390", mobile: true, changes: [
+    "Same auth layout as login; password hint matches the 8-character rule.",
+    "OTP step and request bodies unchanged." ] },
+  { id: "news-desktop", title: "News", vp: "Desktop 1440", changes: [
+    "Global header added; a consistent page-title block replaces the oversized two-tone heading.",
+    "Missing or broken article images show a branded placeholder instead of alt text.",
+    "Footer is visible by default (it used to wait on about 20 IntersectionObservers)." ] },
+  { id: "offers-desktop", title: "Offers", vp: "Desktop 1440", changes: [
+    "Duplicate back-arrow bar removed in favour of the global header.",
+    "Coupon cards use the accent colour for deals and a normal-case Copy button." ] },
+  { id: "about-desktop", title: "About", vp: "Desktop 1440", changes: [
+    "Shared page container and radius scale; uppercase tracking-wide buttons became standard buttons.",
+    "Section content renders without entrance animations hiding it." ] },
+  { id: "orders-desktop", title: "My orders", vp: "Desktop 1440", changes: [
+    "Status badges use one mapping with text: pending amber, processing teal, delivered green, cancelled red.",
+    "Global header replaces the page's own 'Back to home' bar." ] },
+  { group: "Admin and widgets" },
+  { id: "admin-desktop", title: "Admin dashboard", vp: "Desktop 1440", changes: [
+    "Calmer data-dense style: readable stat labels instead of 10 px uppercase, neutral icon tiles, brand chart line.",
+    "Empty states for recent orders and a real chart frame at full width." ] },
+  { id: "admin-hero", title: "Hero banners", vp: "Desktop 1440", changes: [
+    "One divided list with a true-colour preview of each slide instead of stacked heavy cards.",
+    "Active state is a labelled switch; edit and delete are neutral icon buttons named after the slide (no blue or red tiles).",
+    "The edit form picks from 7 theme presets that always render, with a Custom option for existing values." ] },
+  { id: "admin-users", title: "Users", vp: "Desktop 1440", changes: [
+    "Avatar, name and email in one cell; role as a coloured badge with text; wallet balance in tabular figures.",
+    "A 'You' badge marks your own row; pagination no longer jumps to page 0 on an empty list." ] },
+  { id: "admin-coupons", title: "Coupons", vp: "Desktop 1440", changes: [
+    "Codes in a monospace chip; sentence-case headers instead of uppercase micro-labels.",
+    "Usage shows used of limit with a bar (red when exhausted) or 'Unlimited'; expired dates say 'Expired'.",
+    "The create and edit dialog uses a segmented control for percentage vs fixed, and helper text for limits." ] },
+  { id: "admin-categories", title: "Categories", vp: "Desktop 1440", changes: [
+    "Subcategories are listed under their parent with indentation, so the hierarchy reads at a glance.",
+    "Labelled dialog fields, including the parent picker; pagination wraps on small screens." ] },
+  { id: "admin-news", title: "News list", vp: "Desktop 1440", changes: [
+    "Thumbnail with a branded placeholder, category and published badges, date and read time in one row.",
+    "Edit and delete are named icon buttons." ] },
+  { id: "admin-news-new", title: "News editor", vp: "Desktop 1440", changes: [
+    "Two columns: content on the left; category, read time, cover image and publishing on the right.",
+    "Keyboard-accessible image picker that still accepts drag and drop; excerpt character counter.",
+    "A sticky action bar with Cancel and Publish stays in reach while writing." ] },
+  { id: "admin-settings", title: "Settings", vp: "Desktop 1440", changes: [
+    "Fields grouped into Store details, Delivery and Maintenance, each with helper text.",
+    "Maintenance mode is an accessible switch with a warning when on; one Save button with a loading state." ] },
+  { id: "chat-widget", title: "Support chat", vp: "Desktop 1440", changes: [
+    "Readable header, clear customer vs assistant bubbles, labelled input and send button, Escape to close.",
+    "The fallback reply no longer promises a human agent that does not exist; it points to the contact page." ] },
+];
+
+const host = document.getElementById("screens");
+for (const s of SCREENS) {
+  if (s.group) {
+    const g = document.createElement("h3");
+    g.className = "group-title";
+    g.textContent = s.group;
+    host.appendChild(g);
+    if (s.note) {
+      const p = document.createElement("p");
+      p.className = "prose group-note";
+      p.textContent = s.note;
+      host.appendChild(p);
+    }
+    continue;
+  }
+  const from = s.from || "before", to = s.to || "after";
+  const labels = s.labels || ["before", "after"];
+  const art = document.createElement("article");
+  art.className = "screen";
+  art.id = s.to ? `${s.id}-${s.to}` : s.id;
+  const hid = `h-${s.id}`;
+  art.setAttribute("aria-labelledby", hid);
+  art.innerHTML = `
+    <div class="screen-head">
+      <span class="vp">${s.vp}</span>
+      <h3 id="${hid}">${s.title}</h3>
+      <ul class="changes">${s.changes.map(c => `<li>${c}</li>`).join("")}</ul>
+    </div>
+    <div class="pair${s.mobile ? " mobile" : ""}">
+      ${[[from, "before", labels[0]], [to, "after", labels[1]]].map(([dir, k, label]) => `
+        <figure class="${k}">
+          <figcaption><span class="label">${label}</span><button type="button" class="expand" aria-expanded="false">Show full height</button></figcaption>
+          <div class="frame"><img src="${dir}/${s.id}.png" alt="${s.title}, ${label}, ${s.vp.toLowerCase()}" loading="lazy" decoding="async"></div>
+        </figure>`).join("")}
+    </div>`;
+  host.appendChild(art);
+}
+
+host.addEventListener("click", e => {
+  const btn = e.target.closest(".expand");
+  if (!btn) return;
+  const frame = btn.closest("figure").querySelector(".frame");
+  const full = frame.classList.toggle("full");
+  btn.setAttribute("aria-expanded", String(full));
+  btn.textContent = full ? "Collapse" : "Show full height";
+});
+
+const seg = document.querySelectorAll(".seg button");
+function setView(view) {
+  document.body.dataset.view = view;
+  seg.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  try { localStorage.setItem("fb-report-view", view); } catch {}
+}
+seg.forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+let saved = "both";
+try { saved = localStorage.getItem("fb-report-view") || "both"; } catch {}
+setView(saved);
+</script>
