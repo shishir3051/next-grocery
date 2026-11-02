@@ -1,79 +1,92 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Truck, Package, Clock, ShieldCheck, MapPin, RefreshCw, HelpCircle } from "lucide-react";
+import Link from "next/link";
+import { Truck, Package, Clock, RefreshCw, HelpCircle, ArrowRight } from "lucide-react";
 
 export default function ShippingPolicyPage() {
   const policies = [
     {
-      icon: <Truck className="text-teal-600" />,
-      title: "Delivery Areas",
+      icon: <Truck size={22} className="text-brand-600" aria-hidden="true" />,
+      title: "Delivery areas",
       content: "We currently deliver to all major areas of Dhaka, Chittagong, and Sylhet. If you are outside these areas, we're coming soon! Check your zip code at checkout to confirm availability."
     },
     {
-      icon: <Package className="text-teal-600" />,
-      title: "Delivery Fees",
+      icon: <Package size={22} className="text-brand-600" aria-hidden="true" />,
+      title: "Delivery fees",
       content: "Standard delivery is ৳60. Orders over ৳500 qualify for FREE delivery. Special rush delivery (within 30 mins) is available for ৳100 in selected zones."
     },
     {
-      icon: <Clock className="text-teal-600" />,
-      title: "Delivery Slots",
+      icon: <Clock size={22} className="text-brand-600" aria-hidden="true" />,
+      title: "Delivery slots",
       content: "Instant Delivery: Within 60 minutes. Scheduled Delivery: Choose any 2-hour slot from 8:00 AM to 10:00 PM, up to 7 days in advance."
     },
     {
-      icon: <RefreshCw className="text-teal-600" />,
-      title: "Return Policy",
+      icon: <RefreshCw size={22} className="text-brand-600" aria-hidden="true" />,
+      title: "Return policy",
       content: "If you are not satisfied with the quality of any product, you can return it to the delivery person immediately for an instant refund or replacement. No questions asked."
     }
   ];
 
+  const helpLinks = [
+    {
+      icon: <HelpCircle size={22} className="text-brand-600" aria-hidden="true" />,
+      title: "Have more questions?",
+      text: "Our FAQ section covers detailed ordering and payment instructions.",
+      linkLabel: "Read our FAQs",
+      href: "/faq",
+    },
+    {
+      icon: <RefreshCw size={22} className="text-brand-600" aria-hidden="true" />,
+      title: "Damaged goods?",
+      text: "Contact our 24/7 support line for immediate assistance with any issues.",
+      linkLabel: "Contact support",
+      href: "/contact",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-slate-50 border-b border-slate-100 py-24 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">Shipping & <span className="text-teal-600">Returns</span></h1>
-        <p className="text-slate-500 max-w-xl mx-auto font-medium">
-          Everything you need to know about how we get fresh groceries to your door and our commitment to quality.
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+        {/* Page title */}
+        <header className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Customer service</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Shipping &amp; returns</h1>
+          <p className="mt-3 text-base text-slate-600">
+            Everything you need to know about how we get fresh groceries to your door and our commitment to quality.
+          </p>
+        </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-20 divide-y divide-slate-100">
-        {policies.map((p, i) => (
-          <motion.div 
-            key={i}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="py-12 flex flex-col md:flex-row gap-8 items-start"
-          >
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center flex-shrink-0">
-              {p.icon}
-            </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-800">{p.title}</h2>
-              <p className="text-lg text-slate-500 leading-relaxed font-medium">
-                {p.content}
-              </p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+        <div className="mt-8 grid max-w-4xl gap-4 sm:mt-10 md:grid-cols-2">
+          {policies.map(p => (
+            <section key={p.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50">
+                {p.icon}
+              </div>
+              <h2 className="mt-4 text-lg font-semibold text-slate-900">{p.title}</h2>
+              <p className="mt-2 text-base leading-relaxed text-slate-700">{p.content}</p>
+            </section>
+          ))}
+        </div>
 
-      {/* Helpful Links */}
-      <div className="max-w-4xl mx-auto px-4 pb-24">
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-             <HelpCircle className="text-teal-600 mb-4" size={32} />
-             <h3 className="text-lg font-bold text-slate-800 mb-2">Have more questions?</h3>
-             <p className="text-sm text-slate-500 mb-6">Our FAQ section covers detailed ordering and payment instructions.</p>
-             <button className="text-teal-600 font-bold text-sm underline underline-offset-4">Read our FAQs</button>
-          </div>
-          <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-             <RefreshCw className="text-teal-600 mb-4" size={32} />
-             <h3 className="text-lg font-bold text-slate-800 mb-2">Damaged Goods?</h3>
-             <p className="text-sm text-slate-500 mb-6">Contact our 24/7 support line for immediate assistance with any issues.</p>
-             <button className="text-teal-600 font-bold text-sm underline underline-offset-4">Contact Support</button>
-          </div>
+        {/* Helpful links */}
+        <div className="mt-8 grid max-w-4xl gap-4 md:grid-cols-2">
+          {helpLinks.map(item => (
+            <div key={item.href} className="flex items-start gap-4 rounded-2xl border border-brand-100 bg-brand-50 p-5 sm:p-6">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-white">
+                {item.icon}
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">{item.title}</h2>
+                <p className="mt-1 text-sm text-slate-600">{item.text}</p>
+                <Link
+                  href={item.href}
+                  className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-700 hover:text-brand-800"
+                >
+                  {item.linkLabel} <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

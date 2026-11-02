@@ -1,146 +1,214 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { useCart } from '@/context/CartContext';
-import { X, Trash2, ShoppingCart, Zap, ChevronRight, ArrowRight } from 'lucide-react';
+import { X, Trash2, ShoppingCart, Zap, ArrowRight, CheckCircle2, ShieldCheck, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
+import Button from '@/components/ui/Button';
+import { cn } from '@/lib/cn';
 
 const FREE_DELIVERY_THRESHOLD = 500; // ৳500
 
 export default function CartDrawer() {
   const { items, removeItem, updateQuantity, subtotal, isCartOpen, setIsCartOpen } = useCart();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const progress = Math.min((subtotal / FREE_DELIVERY_THRESHOLD) * 100, 100);
   const remaining = Math.max(FREE_DELIVERY_THRESHOLD - subtotal, 0);
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Move keyboard focus into the drawer when it opens, and give it back to the
+  // element that opened it (e.g. the header cart button) when it closes.
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+    return () => previouslyFocused?.focus?.();
+  }, [isCartOpen]);
+
+  // Escape closes the drawer.
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsCartOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isCartOpen, setIsCartOpen]);
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop: sits above the fixed header (z-50) */}
       {isCartOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm"
+          aria-hidden="true"
+          className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm"
           onClick={() => setIsCartOpen(false)}
         />
       )}
 
-      {/* Drawer */}
+      {/*
+        Drawer. When closed it is translated fully off-screen AND made invisible,
+        so no shadow strip bleeds onto the page and it can't be tabbed into.
+      */}
       <div
-        className={`fixed top-0 right-0 bottom-0 z-40 bg-white flex flex-col shadow-2xl transition-transform duration-300 ease-out ${
-          isCartOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        style={{ width: 'var(--cart-width)' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cart-drawer-title"
+        className={cn(
+          'fixed inset-y-0 right-0 z-[70] flex w-full max-w-[400px] flex-col bg-white duration-300 ease-out',
+          // Tailwind v4 `translate-x-*` uses the CSS `translate` property, so it must be listed here.
+          // Opening: visibility flips instantly (so focus() works). Closing: visibility waits for the slide-out.
+          isCartOpen
+            ? 'visible translate-x-0 shadow-xl transition-[translate,transform]'
+            : 'invisible pointer-events-none translate-x-full transition-[translate,transform,visibility]'
+        )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
           <div className="flex items-center gap-2">
-            <ShoppingCart size={20} className="text-teal-600" />
-            <h2 className="text-lg font-bold text-slate-800">My Cart</h2>
-            {items.length > 0 && (
-              <span className="bg-teal-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                {items.reduce((s, i) => s + i.quantity, 0)}
+            <ShoppingCart size={20} className="text-brand-600" aria-hidden="true" />
+            <h2 id="cart-drawer-title" className="text-lg font-semibold text-slate-900">My cart</h2>
+            {itemCount > 0 && (
+              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">
+                {itemCount}
+                <span className="sr-only"> items</span>
               </span>
             )}
           </div>
           <button
+            ref={closeButtonRef}
+            type="button"
             onClick={() => setIsCartOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
+            aria-label="Close cart"
+            className="-mr-2 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Free Delivery Progress */}
-        <div className="px-5 py-3 bg-gradient-to-r from-teal-50 to-emerald-50 border-b border-teal-100">
+        {/* Free delivery progress */}
+        <div className="border-b border-slate-200 bg-brand-50 px-5 py-3">
           {remaining > 0 ? (
-            <p className="text-xs font-medium text-teal-700 mb-2 flex items-center gap-1">
-              <Zap size={13} className="text-amber-500" />
-              Add <span className="font-bold text-teal-800 mx-0.5">৳{remaining}</span> more for free delivery
+            <p className="mb-2 flex items-center gap-1.5 text-sm text-slate-700">
+              <Zap size={14} className="text-accent-500" aria-hidden="true" />
+              Add <span className="font-semibold text-brand-700">৳{remaining}</span> more for free delivery
             </p>
           ) : (
-            <p className="text-xs font-bold text-teal-700 mb-2 flex items-center gap-1">
-              🎉 You've unlocked <span className="text-emerald-600 ml-0.5">Free Delivery!</span>
+            <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-success-700">
+              <CheckCircle2 size={16} aria-hidden="true" />
+              You&apos;ve unlocked free delivery
             </p>
           )}
-          <div className="w-full h-2 bg-teal-100 rounded-full overflow-hidden">
+          <div
+            className="h-2 w-full overflow-hidden rounded-full bg-brand-100"
+            role="progressbar"
+            aria-label="Progress towards free delivery"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+          >
             <div
-              className="h-full bg-gradient-to-r from-teal-400 to-emerald-400 rounded-full transition-all duration-500"
+              className={cn(
+                'h-full rounded-full transition-[width] duration-500',
+                remaining > 0 ? 'bg-brand-500' : 'bg-success-500'
+              )}
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
-        {/* Items List */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        {/* Items list */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <ShoppingCart size={56} className="mb-4 opacity-30" />
-              <p className="font-semibold text-slate-500">Your cart is empty</p>
-              <p className="text-sm mt-1">Add items to get started!</p>
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50">
+                <ShoppingCart size={28} className="text-brand-600" aria-hidden="true" />
+              </div>
+              <p className="font-semibold text-slate-800">Your cart is empty</p>
+              <p className="mt-1 text-sm text-slate-500">Add items to get started.</p>
+              <Button variant="secondary" size="sm" className="mt-5" onClick={() => setIsCartOpen(false)}>
+                Continue shopping
+              </Button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <ul className="space-y-3">
               {items.map(item => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow"
-                >
+                <li key={item.id} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3">
                   {item.image && (
-                    <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-slate-50 flex-shrink-0">
+                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-50">
                       <Image src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill className="object-cover" />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{item.unit}</p>
-                    <p className="text-sm font-bold text-teal-600 mt-1">৳{(item.price * item.quantity).toFixed(0)}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="text-slate-300 hover:text-red-400 transition-colors p-1"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                    <div className="flex items-center gap-1 bg-teal-50 rounded-lg px-1 py-0.5">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800">{item.name}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{item.unit}</p>
+                      </div>
                       <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-6 h-6 rounded-md bg-white text-teal-600 font-bold text-sm hover:bg-teal-100 transition-all flex items-center justify-center shadow-sm"
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        aria-label={`Remove ${item.name} from cart`}
+                        className="-mr-2 -mt-2 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-danger-50 hover:text-danger-600"
                       >
-                        −
-                      </button>
-                      <span className="w-6 text-center text-sm font-bold text-teal-800">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-6 h-6 rounded-md bg-teal-500 text-white font-bold text-sm hover:bg-teal-600 transition-all flex items-center justify-center shadow-sm"
-                      >
-                        +
+                        <Trash2 size={16} />
                       </button>
                     </div>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                      <p className="text-sm font-bold text-brand-700">৳{(item.price * item.quantity).toFixed(0)}</p>
+                      {/* Quantity stepper */}
+                      <div className="flex items-center rounded-lg border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.id, -1)}
+                          aria-label={`Decrease quantity of ${item.name}`}
+                          className="flex h-10 w-10 items-center justify-center rounded-l-lg text-slate-600 transition-colors hover:bg-slate-100"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="w-8 text-center text-sm font-semibold text-slate-900" aria-live="polite">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.id, 1)}
+                          aria-label={`Increase quantity of ${item.name}`}
+                          className="flex h-10 w-10 items-center justify-center rounded-r-lg text-brand-700 transition-colors hover:bg-brand-50"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
 
         {/* Footer CTA */}
         {items.length > 0 && (
-          <div className="p-4 bg-white border-t border-slate-100 space-y-4">
-            <div className="flex items-center justify-between font-black text-slate-800">
-              <span className="text-lg">Total Amount</span>
-              <span className="text-2xl text-teal-600">৳{subtotal.toFixed(0)}</span>
+          <div className="space-y-3 border-t border-slate-200 bg-white p-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-base font-semibold text-slate-700">Subtotal</span>
+              <span className="text-2xl font-bold text-slate-900">৳{subtotal.toFixed(0)}</span>
             </div>
+            <p className="text-xs text-slate-500">Delivery fee and coupons are applied at checkout.</p>
 
-            <Link
+            <Button
               href="/checkout"
               onClick={() => setIsCartOpen(false)}
-              className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black rounded-2xl shadow-xl shadow-teal-600/20 transition-all flex items-center justify-center gap-2 group"
+              size="lg"
+              fullWidth
+              className="group"
             >
-              Proceed to Checkout
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+              Proceed to checkout
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Button>
 
-            <p className="text-[10px] text-center text-slate-400 font-medium uppercase tracking-widest">
-              Safe & Secure Checkout
+            <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500">
+              <ShieldCheck size={14} aria-hidden="true" />
+              Safe and secure checkout
             </p>
           </div>
         )}

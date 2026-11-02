@@ -2,22 +2,44 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
   Loader2,
-  Check,
   X,
   Ticket,
   Calendar,
-  AlertCircle,
-  Tag,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Save as SaveIcon
 } from "lucide-react";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import {
+  PANEL_CLASS,
+  TH_CLASS,
+  TD_CLASS,
+  LABEL_CLASS,
+  INPUT_CLASS,
+  HELP_CLASS,
+  PAGE_BUTTON_CLASS,
+  BADGE_CLASS,
+  BADGE_TONES,
+  ICON_BUTTON_CLASS,
+  ICON_BUTTON_DANGER_CLASS
+} from "@/components/admin/adminStyles";
+
+// Options for the segmented "Discount type" radio group in the coupon form
+const DISCOUNT_TYPE_OPTIONS = [
+  { value: "percentage", label: "Percentage (%)" },
+  { value: "fixed", label: "Fixed amount (৳)" }
+] as const;
+
+// Idle (non-active) style shared by the prev/next and page-number buttons
+const PAGE_IDLE_CLASS = "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100";
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -25,11 +47,11 @@ export default function AdminCouponsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<any>(null);
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   // Form State
   const [formData, setFormData] = useState({
     code: "",
@@ -51,6 +73,16 @@ export default function AdminCouponsPage() {
     fetchCoupons();
   }, []);
 
+  // Close the coupon modal with the Escape key (only listens while it is open)
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
+
   const fetchCoupons = async () => {
     try {
       const res = await fetch("/api/admin/coupons");
@@ -71,7 +103,7 @@ export default function AdminCouponsPage() {
     try {
       const method = editingCoupon ? "PUT" : "POST";
       const body = editingCoupon ? { ...formData, id: editingCoupon._id } : formData;
-      
+
       const res = await fetch("/api/admin/coupons", {
         method,
         headers: { "Content-Type": "application/json" },
@@ -137,7 +169,7 @@ export default function AdminCouponsPage() {
     setIsModalOpen(true);
   };
 
-  const filteredCoupons = coupons.filter(c => 
+  const filteredCoupons = coupons.filter(c =>
     c.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -153,104 +185,167 @@ export default function AdminCouponsPage() {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  // Range shown in the pagination footer ("Showing 1–10 of 42")
+  const firstShown = filteredCoupons.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const lastShown = Math.min(currentPage * itemsPerPage, filteredCoupons.length);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input 
-            type="text" 
-            placeholder="Search coupons by code..." 
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Header & toolbar (the admin shell already shows the "Coupons" page title) */}
+      <div className="flex flex-col gap-4">
+        <div className="space-y-1">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Discount coupons</h2>
+          <p className="text-sm text-slate-500">Create promo codes, set spending rules and track how often they are used.</p>
         </div>
-        <button 
-          onClick={() => { resetForm(); setIsModalOpen(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20"
-        >
-          <Plus size={18} />
-          Create Coupon
-        </button>
+
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          <div className="relative flex-1">
+            <label htmlFor="coupon-search" className="sr-only">Search coupons</label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" aria-hidden="true" />
+            <input
+              id="coupon-search"
+              type="search"
+              placeholder="Search coupons by code"
+              className={cn(INPUT_CLASS, "pl-10")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button
+            onClick={() => { resetForm(); setIsModalOpen(true); }}
+            className="whitespace-nowrap"
+          >
+            <Plus size={16} aria-hidden="true" /> Create coupon
+          </Button>
+        </div>
       </div>
 
       {isLoading && coupons.length === 0 ? (
-        <div className="h-[40vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+        <div className="h-[40vh] flex items-center justify-center" role="status">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+          <span className="sr-only">Loading coupons…</span>
         </div>
       ) : (
-        <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
+        <div className={cn(PANEL_CLASS, "overflow-hidden")}>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[860px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Coupon Code</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Discount</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Rules</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Usage</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                  <th scope="col" className={TH_CLASS}>Coupon code</th>
+                  <th scope="col" className={TH_CLASS}>Discount</th>
+                  <th scope="col" className={TH_CLASS}>Rules</th>
+                  <th scope="col" className={TH_CLASS}>Usage</th>
+                  <th scope="col" className={TH_CLASS}>Status</th>
+                  <th scope="col" className={cn(TH_CLASS, "text-right")}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {paginatedCoupons.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                      {searchTerm ? `No coupons match "${searchTerm}".` : "No coupons yet. Create your first coupon to get started."}
+                    </td>
+                  </tr>
+                )}
                 {paginatedCoupons.map((coupon) => {
                   const isExpired = new Date(coupon.expiryDate) < new Date();
+                  const expiryLabel = new Date(coupon.expiryDate).toLocaleDateString();
+                  // Usage limit is optional; when set, show progress towards it
+                  const usagePercent = coupon.usageLimit ? Math.min(100, (coupon.usedCount / coupon.usageLimit) * 100) : 0;
+                  const isExhausted = !!coupon.usageLimit && coupon.usedCount >= coupon.usageLimit;
                   return (
-                    <tr key={coupon._id} className="hover:bg-slate-50 transition-colors group text-sm">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
-                            <Ticket size={18} />
-                          </div>
-                          <span className="font-black text-slate-800 tracking-wide">{coupon.code}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-slate-800">
-                          {coupon.discountType === 'percentage' ? `${coupon.discountValue}% Off` : `৳${coupon.discountValue} Off`}
+                    <tr key={coupon._id} className="hover:bg-slate-50 transition-colors">
+                      {/* Code: monospace chip so codes are easy to read and copy */}
+                      <td className={TD_CLASS}>
+                        <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1">
+                          <Ticket size={14} className="text-brand-600 flex-shrink-0" aria-hidden="true" />
+                          <span className="font-mono font-semibold text-slate-900">{coupon.code}</span>
                         </span>
-                        {coupon.maxDiscount && (
-                           <p className="text-[10px] text-slate-400">Up to ৳{coupon.maxDiscount}</p>
-                        )}
                       </td>
-                      <td className="px-6 py-4">
+
+                      <td className={TD_CLASS}>
+                        <p className="font-semibold text-slate-900 tabular-nums">
+                          {coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `৳${coupon.discountValue} off`}
+                        </p>
+                        {coupon.maxDiscount ? (
+                          <p className="text-xs text-slate-500 tabular-nums">Up to ৳{coupon.maxDiscount}</p>
+                        ) : null}
+                      </td>
+
+                      <td className={TD_CLASS}>
                         <div className="space-y-1">
-                          <p className="text-xs text-slate-500">Min Order: ৳{coupon.minOrderAmount}</p>
-                          <p className={`text-[10px] flex items-center gap-1 font-bold ${isExpired ? 'text-red-400' : 'text-slate-400'}`}>
-                            <Calendar size={10} /> Exp: {new Date(coupon.expiryDate).toLocaleDateString()}
+                          <p className="text-sm text-slate-600 tabular-nums">Min. order ৳{coupon.minOrderAmount}</p>
+                          <p className={cn(
+                            "flex items-center gap-1.5 text-xs tabular-nums",
+                            isExpired ? "font-medium text-danger-700" : "text-slate-600"
+                          )}>
+                            <Calendar size={14} aria-hidden="true" />
+                            {isExpired ? `Expired ${expiryLabel}` : `Expires ${expiryLabel}`}
                           </p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-bold text-slate-800">{coupon.usedCount} used</span>
-                          {coupon.usageLimit && (
-                            <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-teal-500" 
-                                style={{ width: `${Math.min(100, (coupon.usedCount / coupon.usageLimit) * 100)}%` }} 
+
+                      <td className={TD_CLASS}>
+                        <p className="tabular-nums">
+                          <span className="font-semibold text-slate-900">{coupon.usedCount}</span>{" "}
+                          <span className="text-slate-600">used</span>
+                        </p>
+                        {coupon.usageLimit ? (
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div
+                              role="progressbar"
+                              aria-label={`Usage of ${coupon.code}`}
+                              aria-valuemin={0}
+                              aria-valuemax={coupon.usageLimit}
+                              aria-valuenow={Math.min(coupon.usedCount, coupon.usageLimit)}
+                              className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100"
+                            >
+                              <div
+                                className={cn("h-full rounded-full", isExhausted ? "bg-danger-600" : "bg-brand-600")}
+                                style={{ width: `${usagePercent}%` }}
                               />
                             </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {!coupon.isActive ? (
-                          <span className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-[10px] font-black uppercase">Inactive</span>
-                        ) : isExpired ? (
-                          <span className="px-2 py-1 bg-red-50 text-red-500 rounded-lg text-[10px] font-black uppercase">Expired</span>
+                            <span className={cn("text-xs tabular-nums", isExhausted ? "font-medium text-danger-700" : "text-slate-500")}>
+                              of {coupon.usageLimit}
+                            </span>
+                          </div>
                         ) : (
-                          <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase">Active</span>
+                          <p className="mt-0.5 text-xs text-slate-500">Unlimited</p>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 transition-opacity">
-                          <button onClick={() => openEditModal(coupon)} className="p-2 hover:bg-teal-50 hover:text-teal-600 text-slate-400 rounded-lg transition-all">
-                            <Edit3 size={16} />
+
+                      <td className={TD_CLASS}>
+                        {!coupon.isActive ? (
+                          <span className={cn(BADGE_CLASS, BADGE_TONES.neutral)}>Inactive</span>
+                        ) : isExpired ? (
+                          <span className={cn(BADGE_CLASS, BADGE_TONES.danger)}>Expired</span>
+                        ) : (
+                          <span className={cn(BADGE_CLASS, BADGE_TONES.success)}>
+                            <span className="h-1.5 w-1.5 rounded-full bg-success-600" aria-hidden="true" />
+                            Active
+                          </span>
+                        )}
+                      </td>
+
+                      <td className={cn(TD_CLASS, "text-right")}>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(coupon)}
+                            aria-label={`Edit coupon ${coupon.code}`}
+                            title="Edit"
+                            className={ICON_BUTTON_CLASS}
+                          >
+                            <Edit3 size={16} aria-hidden="true" />
                           </button>
-                          <button onClick={() => handleDelete(coupon._id)} className="p-2 hover:bg-red-50 hover:text-red-600 text-slate-400 rounded-lg transition-all">
-                            <Trash2 size={16} />
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(coupon._id)}
+                            aria-label={`Delete coupon ${coupon.code}`}
+                            title="Delete"
+                            className={ICON_BUTTON_DANGER_CLASS}
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
                           </button>
                         </div>
                       </td>
@@ -262,42 +357,46 @@ export default function AdminCouponsPage() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-400">
-              Showing <span className="text-slate-700">{(currentPage-1)*itemsPerPage + 1}</span> to <span className="text-slate-700">{Math.min(currentPage*itemsPerPage, filteredCoupons.length)}</span> of <span className="text-slate-700">{filteredCoupons.length}</span> coupons
+          <nav
+            aria-label="Coupons pagination"
+            className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3"
+          >
+            <p className="text-sm text-slate-600">
+              Showing <span className="font-semibold text-slate-900">{firstShown}</span>–<span className="font-semibold text-slate-900">{lastShown}</span> of <span className="font-semibold text-slate-900">{filteredCoupons.length}</span> coupons
             </p>
-            <div className="flex items-center gap-2">
-              <button 
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(p => Math.max(1, p-1))}
-                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-teal-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                aria-label="Previous page"
+                className={cn(PAGE_BUTTON_CLASS, PAGE_IDLE_CLASS, "disabled:opacity-40 disabled:cursor-not-allowed")}
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} aria-hidden="true" />
               </button>
-              <div className="flex items-center gap-1">
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i+1}
-                    onClick={() => setCurrentPage(i+1)}
-                    className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
-                      currentPage === i+1 
-                        ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20' 
-                        : 'bg-white border border-slate-200 text-slate-400 hover:border-teal-300 hover:text-teal-600'
-                    }`}
-                  >
-                    {i+1}
-                  </button>
-                )).slice(Math.max(0, currentPage-3), Math.min(totalPages, currentPage+2))}
-              </div>
-              <button 
-                disabled={currentPage === totalPages}
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  type="button"
+                  key={i+1}
+                  onClick={() => setCurrentPage(i+1)}
+                  aria-label={`Page ${i+1}`}
+                  aria-current={currentPage === i+1 ? "page" : undefined}
+                  className={cn(PAGE_BUTTON_CLASS, currentPage === i+1 ? "bg-brand-600 text-white" : PAGE_IDLE_CLASS)}
+                >
+                  {i+1}
+                </button>
+              )).slice(Math.max(0, currentPage-3), Math.min(totalPages, currentPage+2))}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
-                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-teal-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                aria-label="Next page"
+                className={cn(PAGE_BUTTON_CLASS, PAGE_IDLE_CLASS, "disabled:opacity-40 disabled:cursor-not-allowed")}
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={16} aria-hidden="true" />
               </button>
             </div>
-          </div>
+          </nav>
         </div>
       )}
 
@@ -305,68 +404,121 @@ export default function AdminCouponsPage() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-800">{editingCoupon ? "Edit Coupon" : "Create Coupon"}</h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-50 rounded-full text-slate-400 transition-all"><X size={24} /></button>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/50" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 12 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="coupon-modal-title"
+              className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h2 id="coupon-modal-title" className="text-lg font-semibold text-slate-900">
+                  {editingCoupon ? "Edit coupon" : "Create coupon"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  aria-label="Close"
+                  className={ICON_BUTTON_CLASS}
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-8 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Coupon Code</label>
-                  <input required type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} placeholder="e.g., SUMMER50" className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none transition-all" />
+              <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
+                {/* Scrollable fields; the action bar below stays visible */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
+                  <div>
+                    <label htmlFor="coupon-code" className={LABEL_CLASS}>Coupon code</label>
+                    <input id="coupon-code" required type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} placeholder="e.g. SUMMER50" className={cn(INPUT_CLASS, "font-mono font-semibold")} />
+                  </div>
+
+                  {/* Discount type as a segmented radio group (same values as the old select) */}
+                  <fieldset>
+                    <legend className={LABEL_CLASS}>Discount type</legend>
+                    <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-300 bg-slate-50 p-1">
+                      {DISCOUNT_TYPE_OPTIONS.map((option) => {
+                        const isSelected = formData.discountType === option.value;
+                        return (
+                          <label
+                            key={option.value}
+                            className={cn(
+                              "flex min-h-10 cursor-pointer items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors",
+                              "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500",
+                              isSelected ? "bg-white text-brand-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="discountType"
+                              value={option.value}
+                              checked={isSelected}
+                              onChange={(e) => setFormData({...formData, discountType: e.target.value})}
+                              className="sr-only"
+                            />
+                            {option.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <label htmlFor="coupon-value" className={LABEL_CLASS}>
+                        Discount value ({formData.discountType === 'percentage' ? '%' : '৳'})
+                      </label>
+                      <input id="coupon-value" required type="number" value={formData.discountValue} onChange={(e) => setFormData({...formData, discountValue: e.target.value})} placeholder={formData.discountType === 'percentage' ? "10" : "50"} className={INPUT_CLASS} />
+                    </div>
+                    <div>
+                      <label htmlFor="coupon-min-order" className={LABEL_CLASS}>Minimum order (৳)</label>
+                      <input id="coupon-min-order" type="number" value={formData.minOrderAmount} onChange={(e) => setFormData({...formData, minOrderAmount: e.target.value})} placeholder="0" className={INPUT_CLASS} />
+                    </div>
+                    <div>
+                      <label htmlFor="coupon-max-discount" className={LABEL_CLASS}>Max discount (৳)</label>
+                      <input
+                        id="coupon-max-discount"
+                        type="number"
+                        disabled={formData.discountType === 'fixed'}
+                        value={formData.maxDiscount}
+                        onChange={(e) => setFormData({...formData, maxDiscount: e.target.value})}
+                        placeholder={formData.discountType === 'fixed' ? "Not applicable" : "No cap"}
+                        aria-describedby="coupon-max-discount-help"
+                        className={cn(INPUT_CLASS, "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400")}
+                      />
+                      <p id="coupon-max-discount-help" className={HELP_CLASS}>
+                        {formData.discountType === 'fixed'
+                          ? "Only used for percentage discounts."
+                          : "Optional cap on the percentage discount."}
+                      </p>
+                    </div>
+                    <div>
+                      <label htmlFor="coupon-usage-limit" className={LABEL_CLASS}>Usage limit</label>
+                      <input id="coupon-usage-limit" type="number" value={formData.usageLimit} onChange={(e) => setFormData({...formData, usageLimit: e.target.value})} placeholder="Unlimited" aria-describedby="coupon-usage-limit-help" className={INPUT_CLASS} />
+                      <p id="coupon-usage-limit-help" className={HELP_CLASS}>Total redemptions allowed. Leave empty for unlimited.</p>
+                    </div>
+                    <div>
+                      <label htmlFor="coupon-expiry" className={LABEL_CLASS}>Expiry date</label>
+                      <input id="coupon-expiry" required type="date" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} className={INPUT_CLASS} />
+                    </div>
+                  </div>
+
+                  <label htmlFor="coupon-active" className="flex min-h-10 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
+                    <input id="coupon-active" type="checkbox" className="h-5 w-5 cursor-pointer accent-brand-600" checked={formData.isActive} onChange={(e) => setFormData({...formData, isActive: e.target.checked})} />
+                    Active (customers can use this coupon)
+                  </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Discount Type</label>
-                    <select value={formData.discountType} onChange={(e) => setFormData({...formData, discountType: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer">
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount (৳)</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Value</label>
-                    <input required type="number" value={formData.discountValue} onChange={(e) => setFormData({...formData, discountValue: e.target.value})} placeholder={formData.discountType === 'percentage' ? "10" : "50"} className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Min Spend (৳)</label>
-                    <input type="number" value={formData.minOrderAmount} onChange={(e) => setFormData({...formData, minOrderAmount: e.target.value})} placeholder="0" className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Max Disc (৳)</label>
-                    <input type="number" disabled={formData.discountType === 'fixed'} value={formData.maxDiscount} onChange={(e) => setFormData({...formData, maxDiscount: e.target.value})} placeholder="N/A" className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none disabled:opacity-30" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Expiry Date</label>
-                    <input required type="date" value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Usage Limit</label>
-                    <input type="number" value={formData.usageLimit} onChange={(e) => setFormData({...formData, usageLimit: e.target.value})} placeholder="No limit" className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-teal-500 outline-none" />
-                  </div>
-                </div>
-
-                <label className="flex items-center gap-3 cursor-pointer group pt-2 px-1">
-                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.isActive ? 'bg-teal-500 border-teal-500 shadow-lg shadow-teal-500/20' : 'border-slate-200 group-hover:border-teal-300'}`}>
-                    {formData.isActive && <Check size={14} className="text-white" />}
-                    <input type="checkbox" className="hidden" checked={formData.isActive} onChange={(e) => setFormData({...formData, isActive: e.target.checked})} />
-                  </div>
-                  <span className="text-sm font-bold text-slate-600">Mark as Active</span>
-                </label>
-
-                <div className="mt-8 flex gap-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-all">Cancel</button>
-                  <button type="submit" disabled={isLoading} className="flex-[2] py-4 bg-teal-600 text-white font-black rounded-2xl shadow-xl shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center justify-center gap-2">
-                    {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : editingCoupon ? "Save Changes" : "Create Coupon"}
-                  </button>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
+                  <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" loading={isLoading}>
+                    {!isLoading && <SaveIcon size={16} aria-hidden="true" />}
+                    {editingCoupon ? "Save changes" : "Create coupon"}
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -374,7 +526,7 @@ export default function AdminCouponsPage() {
         )}
       </AnimatePresence>
 
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
         message={modalConfig.message}

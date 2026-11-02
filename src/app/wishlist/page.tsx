@@ -1,49 +1,51 @@
 "use client";
 
 import { useWishlist } from "@/context/WishlistContext";
-import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ShoppingBag, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import ProductCard from "@/components/product/ProductCard";
+import Button from "@/components/ui/Button";
 
 export default function WishlistPage() {
   const { wishlist, clearWishlist } = useWishlist();
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 py-12 md:py-20">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div className="space-y-4">
-            <Link href="/" className="inline-flex items-center gap-2 text-teal-600 font-bold text-sm hover:underline">
-               <ArrowLeft size={16} /> Continue Shopping
-            </Link>
-            <h1 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight flex items-center gap-4">
-              My <span className="text-teal-600">Wishlist</span>
-              <div className="px-4 py-1.5 bg-white rounded-2xl text-lg font-black text-slate-400 border border-slate-100 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+        {/* Page title row (a plain div: the global Navbar already provides the banner <header>) */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+              My wishlist
+              <span className="inline-flex min-w-8 h-8 px-2.5 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 border border-brand-100">
                 {wishlist.length}
-              </div>
+                <span className="sr-only">&nbsp;{wishlist.length === 1 ? "item" : "items"}</span>
+              </span>
             </h1>
-            <p className="text-slate-500 font-medium">
-              Save your favorite fresh products here and add them to your cart later.
+            <p className="text-sm text-slate-600 mt-1">
+              Save your favourite fresh products here and add them to your cart later.
             </p>
           </div>
 
           {wishlist.length > 0 && (
-            <button 
+            <Button
               onClick={clearWishlist}
-              className="px-6 py-3 bg-white text-red-500 font-bold rounded-xl border border-red-50 hover:bg-red-50 transition-all text-sm"
+              variant="secondary"
+              size="sm"
+              className="self-start sm:self-auto h-10 text-danger-700 border-danger-200 hover:bg-danger-50 hover:border-danger-200"
             >
-              Clear All
-            </button>
+              <Trash2 size={16} aria-hidden="true" />
+              Clear all
+            </Button>
           )}
         </div>
 
         {/* Wishlist Grid */}
         <AnimatePresence mode="popLayout">
           {wishlist.length > 0 ? (
-            <motion.div 
+            <motion.div
               layout
               className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
             >
@@ -52,26 +54,22 @@ export default function WishlistPage() {
               ))}
             </motion.div>
           ) : (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-[3rem] p-12 md:p-20 text-center space-y-8 border border-slate-100 shadow-sm"
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm"
             >
-              <div className="w-24 h-24 bg-teal-50 rounded-full flex items-center justify-center mx-auto">
-                <Heart className="text-teal-600 w-12 h-12" />
+              <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                <Heart className="text-brand-600 w-8 h-8" aria-hidden="true" />
               </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-black text-slate-800 italic">Your wishlist is empty</h2>
-                <p className="text-slate-500 font-medium max-w-sm mx-auto">
-                  Browse our fresh groceries and heart the items you love to save them here!
-                </p>
-              </div>
-              <div className="pt-4">
-                <Link href="/" className="inline-flex items-center gap-3 px-10 py-5 bg-teal-600 text-white font-black rounded-2xl shadow-xl hover:bg-teal-700 transition-all uppercase tracking-widest text-sm">
-                  <ShoppingBag size={20} />
-                  Start Shopping
-                </Link>
-              </div>
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Your wishlist is empty</h2>
+              <p className="text-sm text-slate-600 max-w-sm mx-auto mt-2 mb-6">
+                Browse our fresh groceries and tap the heart on items you love to save them here.
+              </p>
+              <Button href="/">
+                <ShoppingBag size={18} aria-hidden="true" />
+                Start shopping
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>

@@ -2,29 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Package, 
-  Search, 
-  Filter, 
-  Eye, 
-  Truck, 
-  CheckCircle2, 
-  XCircle, 
-  Clock,
-  MoreVertical,
+import {
+  Search,
+  Eye,
+  Truck,
+  CheckCircle2,
+  X,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  MapPin,
   Phone,
-  Calendar,
   CreditCard,
-  Check,
-  X,
-  User as UserIcon,
-  Navigation
+  Navigation,
+  ShoppingBasket
 } from "lucide-react";
 import Image from "next/image";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { TH_CLASS, PAGE_BUTTON_CLASS, INPUT_CLASS as FIELD_CLASS, BADGE_CLASS } from "@/components/admin/adminStyles";
+
+const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -120,102 +117,129 @@ export default function AdminOrdersPage() {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  // Status badge colours (design tokens): amber = waiting, slate = in progress,
+  // brand = on the way, green = done, red = cancelled.
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'processing': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'shipped': return 'bg-teal-50 text-teal-600 border-teal-100';
-      case 'delivered': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case 'cancelled': return 'bg-red-50 text-red-600 border-red-100';
-      default: return 'bg-slate-50 text-slate-500 border-slate-100';
+      case 'pending': return 'bg-accent-50 text-accent-800 border-accent-200';
+      case 'processing': return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'shipped': return 'bg-brand-50 text-brand-700 border-brand-200';
+      case 'delivered': return 'bg-success-50 text-success-700 border-success-100';
+      case 'cancelled': return 'bg-danger-50 text-danger-700 border-danger-200';
+      default: return 'bg-slate-50 text-slate-600 border-slate-200';
     }
   };
 
+  const getPaymentColor = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case 'paid': return 'bg-success-50 text-success-700 border-success-100';
+      case 'failed': return 'bg-danger-50 text-danger-700 border-danger-200';
+      default: return 'bg-accent-50 text-accent-800 border-accent-200';
+    }
+  };
+
+  // Range shown in the pagination footer ("Showing 1–10 of 42")
+  const firstShown = filteredOrders.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const lastShown = Math.min(currentPage * itemsPerPage, filteredOrders.length);
+
+  const assignedUserId = selectedOrder ? selectedOrder.assignedTo?._id || selectedOrder.assignedTo || "" : "";
+  const assignedUserName = deliveryUsers.find(u => u._id === assignedUserId)?.name;
+
   return (
     <div className="space-y-6">
-      {/* Header & Stats */}
+      {/* Header & toolbar */}
       <div className="flex flex-col gap-4">
         <div className="space-y-1">
-          <h2 className="text-xl md:text-2xl font-black text-slate-800">Order Management</h2>
-          <p className="text-xs md:text-sm text-slate-500 font-medium">Manage and track all customer orders from here.</p>
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Order management</h2>
+          <p className="text-sm text-slate-500">Manage and track all customer orders from here.</p>
         </div>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input 
-                type="text" 
-                placeholder="Search orders..." 
+              <label htmlFor="order-search" className="sr-only">Search orders</label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" aria-hidden="true" />
+              <input
+                id="order-search"
+                type="search"
+                placeholder="Search by order ID, customer name or email"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all shadow-sm"
+                className={cn(FIELD_CLASS, "pl-10")}
               />
             </div>
         </div>
       </div>
 
       {isLoading && orders.length === 0 ? (
-        <div className="h-[40vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+        <div className="h-[40vh] flex items-center justify-center" role="status">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+          <span className="sr-only">Loading orders…</span>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl md:rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto scrollbar-hide">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[1000px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Order Details</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Customer</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Items</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Payment</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest">Total</th>
-                  <th className="px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
+                  <th scope="col" className={TH_CLASS}>Order</th>
+                  <th scope="col" className={TH_CLASS}>Customer</th>
+                  <th scope="col" className={TH_CLASS}>Items</th>
+                  <th scope="col" className={TH_CLASS}>Status</th>
+                  <th scope="col" className={TH_CLASS}>Payment</th>
+                  <th scope="col" className={cn(TH_CLASS, "text-right")}>Total</th>
+                  <th scope="col" className={cn(TH_CLASS, "text-right")}>Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 italic-none">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+                {paginatedOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">
+                      {searchTerm ? `No orders match "${searchTerm}".` : "No orders yet."}
+                    </td>
+                  </tr>
+                )}
                 {paginatedOrders.map((order) => (
-                  <tr key={order._id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4">
+                  <tr key={order._id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800">#{order._id.slice(-8).toUpperCase()}</span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                        <span className="font-semibold text-slate-900">#{order._id.slice(-8).toUpperCase()}</span>
+                        <span className="text-xs text-slate-500">
                           {new Date(order.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800">{order.user?.name || 'Guest'}</span>
-                        <span className="text-xs text-slate-400">{order.user?.email}</span>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-slate-900">{order.user?.name || 'Guest'}</span>
+                        <span className="text-xs text-slate-500 truncate">{order.user?.email}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-slate-600">
-                        {order.items.length} {order.items.length === 1 ? 'Item' : 'Items'}
-                      </span>
+                    <td className="px-4 py-3 tabular-nums">
+                      {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${getStatusColor(order.status)}`}>
+                    <td className="px-4 py-3">
+                      <span className={cn(BADGE_CLASS, "capitalize", getStatusColor(order.status))}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                       <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
-                         order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                       }`}>
+                    <td className="px-4 py-3">
+                       <span className={cn(BADGE_CLASS, "capitalize", getPaymentColor(order.paymentStatus))}>
                          {order.paymentStatus}
                        </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-black text-slate-800">৳{order.totalAmount}</span>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-semibold text-slate-900 tabular-nums">৳{order.totalAmount}</span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setSelectedOrder(order)}
-                        className="p-2 hover:bg-teal-50 hover:text-teal-600 text-slate-400 rounded-lg transition-all"
+                        aria-label={`View order #${order._id.slice(-8).toUpperCase()}`}
+                        className="h-10"
                       >
-                        <Eye size={18} />
-                      </button>
+                        <Eye size={16} aria-hidden="true" /> View
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -223,20 +247,51 @@ export default function AdminOrdersPage() {
             </table>
           </div>
 
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-400">
-              Showing <span className="text-slate-700">{(currentPage-1)*itemsPerPage + 1}</span> to <span className="text-slate-700">{Math.min(currentPage*itemsPerPage, filteredOrders.length)}</span> of <span className="text-slate-700">{filteredOrders.length}</span> orders
+          <nav
+            aria-label="Orders pagination"
+            className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3"
+          >
+            <p className="text-sm text-slate-600">
+              Showing <span className="font-semibold text-slate-900">{firstShown}</span>–<span className="font-semibold text-slate-900">{lastShown}</span> of <span className="font-semibold text-slate-900">{filteredOrders.length}</span> orders
             </p>
-            <div className="flex items-center gap-2">
-              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p-1))} className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-teal-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"><ChevronLeft size={16} /></button>
-              <div className="flex items-center gap-1">
-                {[...Array(totalPages)].map((_, i) => (
-                  <button key={i+1} onClick={() => setCurrentPage(i+1)} className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${currentPage === i+1 ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20' : 'bg-white border border-slate-200 text-slate-400 hover:border-teal-300 hover:text-teal-600'}`}>{i+1}</button>
-                )).slice(Math.max(0, currentPage-3), Math.min(totalPages, currentPage+2))}
-              </div>
-              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-teal-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"><ChevronRight size={16} /></button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p-1))}
+                aria-label="Previous page"
+                className={cn(PAGE_BUTTON_CLASS, "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed")}
+              >
+                <ChevronLeft size={16} aria-hidden="true" />
+              </button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  type="button"
+                  key={i+1}
+                  onClick={() => setCurrentPage(i+1)}
+                  aria-label={`Page ${i+1}`}
+                  aria-current={currentPage === i+1 ? "page" : undefined}
+                  className={cn(
+                    PAGE_BUTTON_CLASS,
+                    currentPage === i+1
+                      ? "bg-brand-600 text-white"
+                      : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                  )}
+                >
+                  {i+1}
+                </button>
+              )).slice(Math.max(0, currentPage-3), Math.min(totalPages, currentPage+2))}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
+                aria-label="Next page"
+                className={cn(PAGE_BUTTON_CLASS, "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed")}
+              >
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
             </div>
-          </div>
+          </nav>
         </div>
       )}
 
@@ -244,96 +299,131 @@ export default function AdminOrdersPage() {
       <AnimatePresence>
         {selectedOrder && (
           <div className="fixed inset-0 z-[60] flex justify-end">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedOrder(null)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-slate-800">Order Details</h2>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">#{selectedOrder._id.toUpperCase()}</p>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedOrder(null)} className="absolute inset-0 bg-slate-900/50" />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="order-drawer-title"
+              className="relative w-full max-w-lg bg-white h-full shadow-xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h2 id="order-drawer-title" className="text-lg font-semibold text-slate-900">Order details</h2>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5 truncate">#{selectedOrder._id.toUpperCase()}</p>
                 </div>
-                <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-slate-50 rounded-full text-slate-400 transition-all"><XCircle size={24} /></button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrder(null)}
+                  aria-label="Close order details"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Assignment Section */}
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-sm shadow-blue-500/5">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Navigation size={14} /> Assign Delivery Specialist
-                  </h3>
-                  <div className="space-y-3">
-                    <select 
-                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-teal-500 transition-all cursor-pointer"
-                      value={selectedOrder.assignedTo?._id || selectedOrder.assignedTo || ""}
-                      onChange={(e) => assignDelivery(selectedOrder._id, e.target.value)}
-                    >
-                      <option value="">Unassigned (Select Personnel)</option>
-                      {deliveryUsers.map(user => (
-                        <option key={user._id} value={user._id}>{user.name}</option>
-                      ))}
-                    </select>
-                    {selectedOrder.assignedTo && (
-                      <p className="text-[10px] text-teal-600 font-black uppercase tracking-widest animate-pulse">
-                         Successfully assigned to {deliveryUsers.find(u => u._id === (selectedOrder.assignedTo?._id || selectedOrder.assignedTo))?.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Truck size={14} /> Order Fulfillment
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((s) => (
-                      <button key={s} onClick={() => updateOrderStatus(selectedOrder._id, s)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${selectedOrder.status === s ? getStatusColor(s).replace('bg-', 'bg-').replace('border-', 'border-') + ' ring-2 ring-teal-500' : 'bg-white text-slate-500 border-slate-200 hover:border-teal-300'}`}>{s}</button>
+                <section className="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                  <label htmlFor="assign-delivery" className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <Navigation size={16} className="text-slate-500" aria-hidden="true" /> Delivery partner
+                  </label>
+                  <select
+                    id="assign-delivery"
+                    className={cn(FIELD_CLASS, "cursor-pointer")}
+                    value={assignedUserId}
+                    onChange={(e) => assignDelivery(selectedOrder._id, e.target.value)}
+                  >
+                    <option value="">Unassigned (select a delivery partner)</option>
+                    {deliveryUsers.map(user => (
+                      <option key={user._id} value={user._id}>{user.name}</option>
                     ))}
+                  </select>
+                  {selectedOrder.assignedTo && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-success-700" role="status">
+                      <CheckCircle2 size={14} aria-hidden="true" />
+                      Assigned to {assignedUserName || "a delivery partner"}
+                    </p>
+                  )}
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 p-4 sm:p-5" aria-labelledby="order-status-title">
+                  <h3 id="order-status-title" className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <Truck size={16} className="text-slate-500" aria-hidden="true" /> Order status
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {ORDER_STATUSES.map((s) => {
+                      const isCurrent = selectedOrder.status === s;
+                      return (
+                        <button
+                          type="button"
+                          key={s}
+                          onClick={() => updateOrderStatus(selectedOrder._id, s)}
+                          aria-pressed={isCurrent}
+                          className={cn(
+                            "flex h-10 items-center justify-center gap-1.5 rounded-lg border px-3 text-sm font-medium capitalize transition-colors",
+                            isCurrent
+                              ? cn(getStatusColor(s), "ring-2 ring-brand-500 ring-offset-1")
+                              : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                          )}
+                        >
+                          {isCurrent && <CheckCircle2 size={14} aria-hidden="true" />}
+                          {s}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
+                </section>
 
-
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Order Summary</h3>
-                  <div className="space-y-3">
+                <section className="space-y-3" aria-labelledby="order-summary-title">
+                  <h3 id="order-summary-title" className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                    <ShoppingBasket size={16} className="text-slate-500" aria-hidden="true" /> Order summary
+                  </h3>
+                  <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
                     {selectedOrder.items.map((item: any, idx: number) => (
-                      <div key={idx} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100">
-                        <div className="relative w-12 h-12 rounded-xl bg-slate-50 overflow-hidden border border-slate-100">
+                      <li key={idx} className="flex items-center gap-3 p-3">
+                        <div className="relative w-12 h-12 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
                           <Image src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill className="object-cover" />
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-slate-800">{item.name}</p>
-                          <p className="text-xs text-slate-400">{item.quantity} x ৳{item.price}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                          <p className="text-xs text-slate-500 tabular-nums">{item.quantity} × ৳{item.price}</p>
                         </div>
-                        <span className="text-sm font-black text-slate-800">৳{item.price * item.quantity}</span>
-                      </div>
+                        <span className="text-sm font-semibold text-slate-900 tabular-nums">৳{item.price * item.quantity}</span>
+                      </li>
                     ))}
+                  </ul>
+                  <div className="flex justify-between items-center pt-1 text-base font-semibold text-slate-900">
+                     <span>Total amount</span>
+                     <span className="text-brand-700 tabular-nums">৳{selectedOrder.totalAmount}</span>
                   </div>
-                  <div className="pt-4 flex justify-between items-center text-lg font-black text-slate-800">
-                     <span>Total Amount</span>
-                     <span className="text-teal-600">৳{selectedOrder.totalAmount}</span>
-                  </div>
-                </div>
+                </section>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                   <div className="space-y-3">
-                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Truck size={14} /> Shipping</h3>
+                <div className="grid sm:grid-cols-2 gap-6">
+                   <section className="space-y-2">
+                     <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2"><Truck size={16} className="text-slate-500" aria-hidden="true" /> Shipping</h3>
                      <div className="text-sm space-y-1">
-                        <p className="font-bold text-slate-800">{selectedOrder.shippingAddress?.street}</p>
-                        <p className="text-slate-500">{selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.zipCode}</p>
-                        <p className="text-slate-500 flex items-center gap-1 mt-1 font-bold"><Phone size={12} /> {selectedOrder.shippingAddress?.phone}</p>
+                        <p className="font-medium text-slate-800">{selectedOrder.shippingAddress?.street}</p>
+                        <p className="text-slate-600">{selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.zipCode}</p>
+                        <p className="text-slate-700 flex items-center gap-1.5 pt-1 font-medium"><Phone size={14} className="text-slate-500" aria-hidden="true" /> {selectedOrder.shippingAddress?.phone}</p>
                      </div>
-                   </div>
-                   <div className="space-y-3">
-                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><CreditCard size={14} /> Payment</h3>
-                     <div className="text-sm">
-                        <p className="font-bold text-slate-800">{selectedOrder.paymentMethod}</p>
-                        <span className={`text-[10px] font-black uppercase inline-block mt-1 ${selectedOrder.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-amber-500'}`}>{selectedOrder.paymentStatus}</span>
+                   </section>
+                   <section className="space-y-2">
+                     <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2"><CreditCard size={16} className="text-slate-500" aria-hidden="true" /> Payment</h3>
+                     <div className="text-sm space-y-1.5">
+                        <p className="font-medium text-slate-800">{selectedOrder.paymentMethod}</p>
+                        <span className={cn(BADGE_CLASS, getPaymentColor(selectedOrder.paymentStatus))}>{selectedOrder.paymentStatus}</span>
                      </div>
-                   </div>
+                   </section>
                 </div>
               </div>
 
-              <div className="p-6 bg-slate-50 border-t border-slate-100">
-                 <button onClick={() => setSelectedOrder(null)} className="w-full py-4 bg-teal-600 text-white font-black rounded-2xl shadow-xl shadow-teal-600/20 hover:bg-teal-700 transition-all text-sm">Close Details</button>
+              <div className="px-6 py-4 border-t border-slate-200">
+                 <Button variant="secondary" fullWidth onClick={() => setSelectedOrder(null)}>Close</Button>
               </div>
             </motion.div>
           </div>

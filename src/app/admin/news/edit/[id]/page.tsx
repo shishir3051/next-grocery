@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, Loader2, AlertCircle } from "lucide-react";
+import { ChevronLeft, Loader2, FileQuestion } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import NewsForm from "@/components/admin/NewsForm";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { PANEL_CLASS } from "@/components/admin/adminStyles";
 
 export default function EditNewsPage() {
   const params = useParams();
@@ -30,45 +33,44 @@ export default function EditNewsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-10 h-10 animate-spin text-teal-600 mx-auto" />
-          <p className="text-slate-400 font-bold">Loading story editor...</p>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center" role="status">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-600" aria-hidden="true" />
+        <span className="sr-only">Loading story editor…</span>
       </div>
     );
   }
 
   if (!article) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="bg-white p-12 rounded-[3rem] shadow-xl text-center space-y-6 max-w-md mx-4 border border-slate-100">
-          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-             <AlertCircle size={40} />
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className={cn(PANEL_CLASS, "w-full max-w-md p-6 sm:p-8 text-center")}>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+            <FileQuestion size={24} className="text-slate-500" aria-hidden="true" />
           </div>
-          <h2 className="text-2xl font-black text-slate-800">Story Not Found</h2>
-          <p className="text-slate-500 font-medium">We couldn't find the article you're trying to edit.</p>
-          <Link href="/admin/news" className="inline-flex items-center gap-2 px-8 py-4 bg-teal-600 text-white font-black rounded-2xl shadow-lg hover:bg-teal-700 transition-all">
-            <ChevronLeft size={18} /> Back to News
-          </Link>
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">Story not found</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            We couldn&apos;t find the article you&apos;re trying to edit. It may have been deleted.
+          </p>
+          <Button href="/admin/news" variant="secondary" className="mt-6">
+            <ChevronLeft size={16} aria-hidden="true" /> Back to news
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <Link 
-            href="/admin/news" 
-            className="inline-flex items-center gap-2 text-slate-400 hover:text-teal-600 font-bold transition-all text-sm mb-2"
-          >
-            <ChevronLeft size={16} /> Back to News
-          </Link>
-          <h1 className="text-3xl font-black text-slate-800">Edit <span className="text-teal-600">Story</span></h1>
-          <p className="text-slate-500 font-medium">Update the details of your article</p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* The shell's top bar already shows "News", so this is a section title */}
+      <div className="space-y-1">
+        <Link
+          href="/admin/news"
+          className="-ml-2 inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-700"
+        >
+          <ChevronLeft size={16} aria-hidden="true" /> Back to news
+        </Link>
+        <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Edit story</h2>
+        <p className="text-sm text-slate-500">Update the details of your article.</p>
       </div>
 
       <NewsForm initialData={article} isEditing={true} />

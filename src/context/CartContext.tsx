@@ -10,11 +10,14 @@ interface CartItem {
   unit: string;
   image: string;
   imageData?: string;
+  /** Stock when the item was last added; caps the quantity. */
+  stock?: number;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: any) => void;
+  /** Adds `quantity` units (default 1), never beyond stock, and opens the cart drawer. */
+  addItem: (product: any, quantity?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
@@ -48,27 +51,30 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem('cart', JSON.stringify(items));
   }, [items]);
 
-  const addItem = useCallback((product: any) => {
+  const addItem = useCallback((product: any, quantity = 1) => {
     setItems((prev) => {
       const id = product._id || product.id;
       const existing = prev.find((item) => item.id === id);
-      
-      // Check if we have enough stock
+
+      // One atomic update, clamped to the product's current stock (the fresh value from the
+      // product wins over the stock remembered on an older cart line).
       const currentQty = existing ? existing.quantity : 0;
-      if (currentQty >= (product.stock || 0)) {
+      const limit = Number(product.stock ?? existing?.stock ?? 0);
+      const newQty = Math.min(currentQty + Math.max(1, Math.floor(quantity)), limit);
+      if (newQty <= currentQty) {
         return prev; // Don't add more than stock
       }
 
       if (existing) {
         return prev.map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === id ? { ...item, quantity: newQty, stock: limit } : item
         );
       }
       return [...prev, {
         id: id,
         name: product.name,
         price: product.price,
-        quantity: 1,
+        quantity: newQty,
         unit: product.unit,
         image: product.image || (product.images && product.images[0]) || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=400',
         imageData: product.imageData,

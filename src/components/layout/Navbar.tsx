@@ -1,29 +1,61 @@
 'use client';
 import { useCart } from '@/context/CartContext';
-import { ShoppingCart, Search, MapPin, Menu, X, Leaf, Package, LogOut, User, LayoutDashboard, Truck } from 'lucide-react';
+import { ShoppingCart, Search, MapPin, Menu, X, Leaf, Package, LogOut, User, LayoutDashboard, Truck, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import LocationModal from './LocationModal';
 
+/**
+ * Site header.
+ *
+ * On the home page HomeClient passes the search/location/menu props and owns that state.
+ * Everywhere else the header is used without props ("standalone"): it keeps its own
+ * search text and sends the shopper to `/?q=…` when they submit.
+ */
 interface NavbarProps {
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
-  onMenuToggle: () => void;
-  isMobileMenuOpen: boolean;
-  location: string;
-  onLocationChange: (loc: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
+  onMenuToggle?: () => void;
+  isMobileMenuOpen?: boolean;
+  location?: string;
+  onLocationChange?: (loc: string) => void;
 }
 
-const LOCATIONS = ['Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Cumilla'];
+const menuItemClass = 'flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 transition-colors';
 
 export default function Navbar({ searchQuery, onSearchChange, location, onLocationChange, onMenuToggle, isMobileMenuOpen }: NavbarProps) {
   const { data: session, status } = useSession();
   const { totalItems, subtotal, setIsCartOpen } = useCart();
+  const router = useRouter();
+  const isStandalone = onSearchChange === undefined;
+
+  // Standalone mode keeps its own search text and location.
+  const [localQuery, setLocalQuery] = useState('');
+  const [localLocation, setLocalLocation] = useState('Dhaka');
+  useEffect(() => {
+    if (!isStandalone) return;
+    try {
+      const saved = localStorage.getItem('userLocation');
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of a browser-only value
+      if (saved) setLocalLocation(saved);
+    } catch { /* storage unavailable */ }
+  }, [isStandalone]);
+
+  const query = isStandalone ? localQuery : (searchQuery ?? '');
+  const setQuery = isStandalone ? setLocalQuery : onSearchChange!;
+  const currentLocation = location ?? localLocation;
+  const changeLocation = (loc: string) => {
+    if (onLocationChange) onLocationChange(loc);
+    else {
+      setLocalLocation(loc);
+      try { localStorage.setItem('userLocation', loc); } catch { /* storage unavailable */ }
+    }
+  };
+
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -33,177 +65,196 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
         setIsUserMenuOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsUserMenuOpen(false); };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isStandalone && query.trim()) router.push(`/?q=${encodeURIComponent(query.trim())}`);
+  };
+
+  const role = session?.user?.role;
+  const showCart = status !== 'authenticated' || role !== 'admin';
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm"
+      className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200"
       style={{ height: 'var(--navbar-height)' }}
     >
-      <div className="h-full flex items-center gap-2 px-2 sm:px-4 max-w-full">
-        {/* Mobile menu toggle */}
-        <button
-          onClick={onMenuToggle}
-          className="md:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-all"
-        >
-          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+      {/* Signature stripe: brand teal → leaf green → tangerine */}
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-brand-600 via-success-500 to-accent-500" />
+      <div className="h-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4">
+        {/* Mobile category menu toggle (home page only) */}
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            aria-label={isMobileMenuOpen ? 'Close categories' : 'Open categories'}
+            aria-expanded={isMobileMenuOpen}
+            className="md:hidden h-10 w-10 -ml-1 grid place-items-center rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+          >
+            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        )}
 
         {/* Logo */}
-        <a href="/" className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-sm">
-            <Leaf size={16} className="text-white" />
-          </div>
-         <span className="text-xl font-black text-slate-800 tracking-tight hidden md:block">
-            Fresh<span className="text-teal-500">Basket</span>
+        <Link href="/" className="flex items-center gap-2 flex-shrink-0" aria-label="FreshBasket home">
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 grid place-items-center shadow-sm">
+            <Leaf size={18} className="text-white" aria-hidden="true" />
           </span>
-        </a>
+          <span className="text-xl font-black text-slate-900 tracking-tight hidden md:block">
+            Fresh<span className="text-brand-600">Basket</span>
+          </span>
+        </Link>
 
-        {/* Location Selector - Shwapno Style */}
-        <div className="relative location-picker hidden lg:block flex-shrink-0">
-          <button
-            onClick={() => setIsLocationModalOpen(true)}
-            className="flex items-center gap-3 px-3 py-1.5 rounded bg-[#D90000] hover:bg-[#B30000] text-white transition-all border border-white/40 shadow-sm"
-          >
-            <Truck size={24} className="text-white flex-shrink-0" strokeWidth={1.5} />
-            <div className="flex flex-col items-start text-left">
-              <span className="text-[12px] font-bold text-white mb-[2px]">Today: 9AM - 10AM</span>
-              <span className="text-[13px] font-medium text-white/95 truncate max-w-[200px] leading-none">{location}</span>
-            </div>
-          </button>
-        </div>
+        {/* Delivery location */}
+        <button
+          onClick={() => setIsLocationModalOpen(true)}
+          className="hidden lg:flex items-center gap-2.5 h-11 pl-3 pr-2.5 rounded-xl border border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50 transition-colors flex-shrink-0"
+          aria-label={`Delivery location: ${currentLocation}. Change location`}
+        >
+          <Truck size={20} className="text-brand-600 flex-shrink-0" aria-hidden="true" />
+          <span className="flex flex-col items-start text-left leading-tight">
+            <span className="text-xs text-slate-500">Delivery in 60 min</span>
+            <span className="text-sm font-semibold text-slate-800 truncate max-w-[160px]">{currentLocation}</span>
+          </span>
+          <ChevronDown size={16} className="text-slate-400" aria-hidden="true" />
+        </button>
 
         <AnimatePresence>
           {isLocationModalOpen && (
             <LocationModal
               isOpen={isLocationModalOpen}
               onClose={() => setIsLocationModalOpen(false)}
-              currentLocation={location}
-              onLocationChange={onLocationChange}
+              currentLocation={currentLocation}
+              onLocationChange={changeLocation}
             />
           )}
         </AnimatePresence>
 
-        {/* Search Bar - Center Aligned & Bounded */}
-        <div className={`flex-1 min-w-0 relative transition-all ${isSearchFocused ? 'scale-[1.01]' : ''}`}>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all bg-slate-50 ${
-            isSearchFocused ? 'border-teal-400 bg-white shadow-md shadow-teal-100' : 'border-slate-200'
-          }`}>
-            <div className="flex items-center gap-1.5 pr-2 border-r border-slate-200 mr-1 hidden md:flex">
-              <MapPin size={12} className="text-teal-500" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[80px]">{location}</span>
-            </div>
-            <Search size={16} className={`flex-shrink-0 transition-colors ${isSearchFocused ? 'text-teal-500' : 'text-slate-400'}`} />
+        {/* Search */}
+        <form role="search" onSubmit={handleSearchSubmit} className="flex-1 min-w-0">
+          <label htmlFor="site-search" className="sr-only">Search groceries</label>
+          <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 transition-colors focus-within:border-brand-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-500/20">
+            <span className="hidden md:flex items-center gap-1 pr-2.5 mr-0.5 border-r border-slate-200 text-xs font-medium text-slate-600 flex-shrink-0">
+              <MapPin size={13} className="text-brand-600" aria-hidden="true" />
+              <span className="truncate max-w-[90px]">{currentLocation}</span>
+            </span>
+            <Search size={17} className="flex-shrink-0 text-slate-400" aria-hidden="true" />
             <input
-              ref={searchRef}
-              type="text"
-              placeholder={`Search for items for order.`}
-              value={searchQuery}
-              onChange={e => onSearchChange(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              className="flex-1 bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none"
+              id="site-search"
+              type="search"
+              placeholder="Search vegetables, milk, rice…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none [&::-webkit-search-cancel-button]:hidden"
             />
-            {searchQuery && (
+            {query && (
               <button
-                onClick={() => onSearchChange('')}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                className="h-7 w-7 grid place-items-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
               >
-                <X size={14} />
+                <X size={15} />
               </button>
             )}
           </div>
-        </div>
+        </form>
 
-        {/* User Account / Auth */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Account */}
+        <div className="flex items-center flex-shrink-0">
           {status === 'authenticated' ? (
-            <div className="relative group" ref={userMenuRef}>
-              <button 
+            <div className="relative" ref={userMenuRef}>
+              <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+                aria-label="Account menu"
+                className="flex items-center gap-2 h-11 px-1.5 sm:px-2 rounded-xl hover:bg-slate-100 transition-colors"
               >
-                <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-sm uppercase overflow-hidden border border-teal-100">
+                <span className="w-8 h-8 rounded-full bg-brand-100 grid place-items-center text-brand-700 font-semibold text-sm uppercase overflow-hidden">
                   {session.user?.image ? (
-                    <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
+                    // eslint-disable-next-line @next/next/no-img-element -- avatar may be a data URL
+                    <img src={session.user.image} alt="" className="w-full h-full object-cover" />
                   ) : (
                     session.user?.name?.charAt(0) || <User size={16} />
                   )}
-                </div>
-                <div className="text-left hidden lg:block">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Account</p>
-                  <p className="text-xs font-bold text-slate-700 leading-none">{session.user?.name?.split(' ')[0]}</p>
-                </div>
+                </span>
+                <span className="text-left hidden lg:block leading-tight">
+                  <span className="block text-xs text-slate-500">Hello,</span>
+                  <span className="block text-sm font-semibold text-slate-800">{session.user?.name?.split(' ')[0]}</span>
+                </span>
+                <ChevronDown size={16} className="text-slate-400 hidden lg:block" aria-hidden="true" />
               </button>
-              
-              {/* Dropdown */}
-              <div className={`absolute top-full right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 transition-all z-50 ${
-                isUserMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible lg:group-hover:opacity-100 lg:group-hover:visible'
-              }`}>
-                {(session.user as any).role === 'admin' ? (
-                  <>
-                    <Link href="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-teal-600 font-bold hover:bg-teal-50 transition-all border-b border-slate-50">
-                      <LayoutDashboard size={16} />
-                      Admin Dashboard
-                    </Link>
-                    <Link href="/admin/users" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                      <User size={16} />
-                      User Management
-                    </Link>
-                    <Link href="/admin/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">
-                      <Package size={16} />
-                      Sales Reports
-                    </Link>
-                  </>
-                ) : (session.user as any).role === 'delivery' && (
-                  <Link href="/delivery" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 font-bold hover:bg-emerald-50 transition-all border-b border-slate-50">
-                    <Truck size={16} />
-                    Delivery Dashboard
+
+              {isUserMenuOpen && (
+                <div role="menu" className="absolute top-full right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50">
+                  {role === 'admin' && (
+                    <>
+                      <Link role="menuitem" href="/admin" onClick={() => setIsUserMenuOpen(false)} className={`${menuItemClass} font-semibold text-brand-700`}>
+                        <LayoutDashboard size={16} aria-hidden="true" /> Admin dashboard
+                      </Link>
+                      <Link role="menuitem" href="/admin/orders" onClick={() => setIsUserMenuOpen(false)} className={menuItemClass}>
+                        <Package size={16} aria-hidden="true" /> Manage orders
+                      </Link>
+                      <div className="my-1.5 border-t border-slate-100" />
+                    </>
+                  )}
+                  {role === 'delivery' && (
+                    <>
+                      <Link role="menuitem" href="/delivery" onClick={() => setIsUserMenuOpen(false)} className={`${menuItemClass} font-semibold text-brand-700`}>
+                        <Truck size={16} aria-hidden="true" /> Delivery dashboard
+                      </Link>
+                      <div className="my-1.5 border-t border-slate-100" />
+                    </>
+                  )}
+                  <Link role="menuitem" href="/profile" onClick={() => setIsUserMenuOpen(false)} className={menuItemClass}>
+                    <User size={16} aria-hidden="true" /> My profile
                   </Link>
-                )}
-                <Link href="/profile" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                  <User size={16} />
-                  My Profile
-                </Link>
-                {(session.user as any).role !== 'admin' && (
-                  <Link href="/orders" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                    <Package size={16} />
-                    My Orders
-                  </Link>
-                )}
-                <button 
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    signOut();
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all text-left"
-                >
-                  <LogOut size={16} />
-                  Log Out
-                </button>
-              </div>
+                  {role !== 'admin' && (
+                    <Link role="menuitem" href="/orders" onClick={() => setIsUserMenuOpen(false)} className={menuItemClass}>
+                      <Package size={16} aria-hidden="true" /> My orders
+                    </Link>
+                  )}
+                  <div className="my-1.5 border-t border-slate-100" />
+                  <button
+                    role="menuitem"
+                    onClick={() => { setIsUserMenuOpen(false); signOut(); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50 transition-colors text-left"
+                  >
+                    <LogOut size={16} aria-hidden="true" /> Log out
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
-            <Link 
+            <Link
               href="/login"
-              className="px-3 py-2 md:px-5 md:py-2.5 text-sm font-bold text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all flex items-center gap-2"
+              aria-label="Log in"
+              className="h-11 px-2.5 md:px-4 text-sm font-semibold text-slate-700 hover:text-brand-700 hover:bg-brand-50 rounded-xl transition-colors flex items-center gap-2"
             >
-              <User size={18} className="md:hidden" />
-              <span className="hidden md:block">Log In</span>
+              <User size={18} className="md:hidden" aria-hidden="true" />
+              <span className="hidden md:block">Log in</span>
             </Link>
           )}
         </div>
-        {(status !== 'authenticated' || (session?.user as any)?.role !== 'admin') && (
+
+        {showCart && (
           <button
             onClick={() => setIsCartOpen(true)}
-            className="flex items-center gap-1 px-2 sm:px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md shadow-teal-200 hover:shadow-lg hover:shadow-teal-200 flex-shrink-0 relative"
+            aria-label={`Open cart, ${totalItems} ${totalItems === 1 ? 'item' : 'items'}, ৳${subtotal.toFixed(0)}`}
+            className="relative flex items-center gap-2 h-11 px-3 sm:px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-sm flex-shrink-0"
           >
-            <ShoppingCart size={17} />
-            <span className="hidden sm:block">৳{subtotal.toFixed(0)}</span>
+            <ShoppingCart size={18} aria-hidden="true" />
+            <span className="hidden sm:block tabular-nums">৳{subtotal.toFixed(0)}</span>
             {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-slate-900 text-xs font-bold rounded-full flex items-center justify-center border-2 border-white badge-pulse">
+              <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 bg-accent-400 text-slate-900 text-[11px] font-bold rounded-full grid place-items-center ring-2 ring-white tabular-nums" aria-hidden="true">
                 {totalItems}
               </span>
             )}

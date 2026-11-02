@@ -1,81 +1,75 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Bot, Sparkles, X } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { MessageSquare, X } from "lucide-react";
 import ChatWidget from "../ui/ChatWidget";
 
+/**
+ * Floating "Ask Fresh AI" launcher that opens the ChatWidget.
+ * Calm, on-brand button: no glow, no pulsing rings, no fake notification dot.
+ */
 export default function FloatingAI() {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-[1000] flex flex-col items-end gap-3 pointer-events-none">
-        
-        {/* Text Bubble */}
+      <div className="pointer-events-none fixed bottom-6 right-6 z-[1000] flex flex-col items-end gap-3">
+
+        {/* Text label (decorative: the button below carries the accessible name) */}
         <AnimatePresence>
           {!isOpen && !isHovered && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, x: 20 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.8, x: 20 }}
-              className="bg-[#1a4d2e] text-white px-6 py-3 rounded-2xl rounded-br-none shadow-2xl border border-white/10 mb-2 relative"
+              aria-hidden="true"
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 12 }}
+              className="whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-md"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight whitespace-nowrap">Ask Fresh AI</span>
-              </div>
-              {/* Triangle Tail */}
-              <div className="absolute bottom-[-8px] right-0 w-4 h-4 bg-[#1a4d2e] transform rotate-45 border-r border-b border-white/10" />
+              Ask Fresh AI
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Floating Icon */}
+        {/* Launcher button */}
         <motion.button
+          type="button"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => setIsOpen(prev => !prev)}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className={`pointer-events-auto w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 overflow-hidden relative ${
-            isOpen ? 'bg-slate-900 border-2 border-white/20' : 'bg-gradient-to-br from-teal-500 to-emerald-600 shadow-teal-500/30'
+          whileTap={reduceMotion ? undefined : { scale: 0.95 }}
+          aria-label={isOpen ? "Close chat" : "Ask Fresh AI"}
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-colors ${
+            isOpen ? "bg-slate-800 hover:bg-slate-900" : "bg-brand-600 hover:bg-brand-700"
           }`}
         >
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             {isOpen ? (
-              <motion.div
+              <motion.span
                 key="close"
-                initial={{ rotate: -90, opacity: 0 }}
+                initial={reduceMotion ? false : { rotate: -90, opacity: 0 }}
                 animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
+                exit={reduceMotion ? undefined : { rotate: 90, opacity: 0 }}
+                className="flex"
               >
-                <X className="text-white" size={28} />
-              </motion.div>
+                <X size={24} aria-hidden="true" />
+              </motion.span>
             ) : (
-              <motion.div
+              <motion.span
                 key="open"
-                initial={{ rotate: 90, opacity: 0 }}
+                initial={reduceMotion ? false : { rotate: 90, opacity: 0 }}
                 animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: -90, opacity: 0 }}
-                className="relative"
+                exit={reduceMotion ? undefined : { rotate: -90, opacity: 0 }}
+                className="flex"
               >
-                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-                   <Bot className="text-white" size={28} />
-                </div>
-                {/* Notification Badge */}
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse" />
-              </motion.div>
+                <MessageSquare size={24} aria-hidden="true" />
+              </motion.span>
             )}
           </AnimatePresence>
-          
-          {/* Animated pulsing rings */}
-          {!isOpen && (
-            <div className="absolute inset-0">
-               <div className="absolute inset-0 border-4 border-white/30 rounded-full animate-ping [animation-duration:2s]" />
-               <div className="absolute inset-0 border-4 border-white/20 rounded-full animate-ping [animation-duration:3s]" />
-            </div>
-          )}
         </motion.button>
       </div>
 

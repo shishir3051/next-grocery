@@ -1,14 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, ArrowRight, Tag, Loader2 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Calendar, Clock, ArrowRight, Newspaper } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import Button from "@/components/ui/Button";
+
+/**
+ * Article cover image with a branded placeholder.
+ * Shown when the article has no image or the image fails to load,
+ * so the card never shows broken-image alt text.
+ */
+function NewsCover({ src, alt }: { src?: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-brand-50 text-brand-600">
+        <Newspaper size={36} aria-hidden="true" />
+        <span className="text-xs font-semibold text-brand-700">FreshBasket News</span>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- images can be base64 data or any remote host
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+  );
+}
 
 export default function NewsPage() {
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     fetch('/api/news', { cache: 'no-store' })
@@ -25,101 +54,117 @@ export default function NewsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Hero */}
-      <div className="bg-white border-b border-slate-100 py-20 px-4">
-        <div className="max-w-7xl mx-auto text-center space-y-4">
-          <h1 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight">Latest <span className="text-teal-600">News</span></h1>
-          <p className="text-slate-500 max-w-xl mx-auto font-medium">
-            Stay updated with FreshBasket's latest announcements, health tips, and grocery insights.
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+        {/* Page title */}
+        <header className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">News & tips</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Latest news</h1>
+          <p className="mt-3 text-base text-slate-600">
+            Stay updated with FreshBasket&apos;s latest announcements, health tips and grocery insights.
           </p>
-        </div>
-      </div>
+        </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-16">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="w-12 h-12 text-teal-500 animate-spin" />
-            <p className="text-slate-400 font-bold">Loading the latest stories...</p>
-          </div>
-        ) : articles.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {articles.map((news, i) => (
-              <motion.article 
-                key={news._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-slate-100 hover:border-teal-200 hover:shadow-xl hover:shadow-teal-900/5 transition-all group"
-              >
-                <div className="relative h-56 overflow-hidden">
-                   <img 
-                    src={news.imageData || news.image || "https://placehold.co/800x600/f1f5f9/94a3b8?text=Waiting+for+Image..."} 
-                    alt={news.title} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute top-4 left-4">
-                    <span className="px-4 py-1.5 bg-white/90 backdrop-blur-sm text-teal-600 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
-                      {news.category}
-                    </span>
+        <div className="mt-8 sm:mt-10">
+          {loading ? (
+            // Skeleton cards keep the layout stable while articles load
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading articles">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <div className="skeleton h-48 rounded-none!" />
+                  <div className="space-y-3 p-5">
+                    <div className="skeleton h-3 w-1/2" />
+                    <div className="skeleton h-5 w-5/6" />
+                    <div className="skeleton h-3 w-full" />
+                    <div className="skeleton h-3 w-2/3" />
                   </div>
                 </div>
-
-                <div className="p-8 space-y-4">
-                  <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} />
-                      {new Date(news.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={14} />
-                      {news.readTime}
-                    </div>
-                  </div>
-
-                  <h2 className="text-xl font-black text-slate-800 leading-tight group-hover:text-teal-600 transition-colors line-clamp-2">
-                    {news.title}
-                  </h2>
-                  
-                  <p className="text-sm text-slate-500 leading-relaxed font-medium line-clamp-3">
-                    {news.excerpt}
-                  </p>
-
-                  <div className="pt-4 border-t border-slate-50">
-                    <Link href={`/news/${news._id}`} className="inline-flex items-center gap-2 text-sm font-black text-teal-600 hover:gap-3 transition-all">
-                      Read Full Story <ArrowRight size={16} />
-                    </Link>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 bg-white rounded-[3rem] border border-slate-100">
-             <p className="text-slate-400 font-bold">No news articles found.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Newsletter */}
-      <div className="max-w-7xl mx-auto px-4 pb-20">
-        <div className="bg-teal-600 rounded-[3rem] p-10 md:p-16 text-center text-white relative overflow-hidden">
-          <div className="relative z-10 space-y-6">
-            <h2 className="text-2xl md:text-4xl font-black italic">Subscribe to our newsletter</h2>
-            <p className="text-teal-50 opacity-90 font-medium max-w-md mx-auto">Get early access to weekly deals and the freshest news delivered to your inbox.</p>
-            <div className="max-w-md mx-auto relative flex items-center">
-               <input 
-                type="email" 
-                placeholder="Enter your email address"
-                className="w-full px-8 py-5 bg-white/10 border border-teal-400/50 rounded-2xl text-white placeholder:text-teal-100 outline-none focus:ring-2 focus:ring-white transition-all backdrop-blur-sm"
-               />
-               <button className="absolute right-2 px-6 py-3 bg-white text-teal-600 font-black rounded-xl hover:bg-slate-50 transition-all shadow-lg text-sm">
-                 Join
-               </button>
+              ))}
             </div>
-          </div>
-          <div className="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3" />
+          ) : articles.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {articles.map((news, i) => (
+                <motion.article
+                  key={news._id}
+                  initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i, 6) * 0.06 }}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <Link href={`/news/${news._id}`} tabIndex={-1} aria-hidden="true" className="relative block h-48 overflow-hidden">
+                    <NewsCover src={news.imageData || news.image} alt="" />
+                    {news.category && (
+                      <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-brand-700 shadow-sm">
+                        {news.category}
+                      </span>
+                    )}
+                  </Link>
+
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar size={14} aria-hidden="true" />
+                        {new Date(news.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      {news.readTime && (
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={14} aria-hidden="true" />
+                          {news.readTime}
+                        </span>
+                      )}
+                    </div>
+
+                    <h2 className="mt-3 line-clamp-2 text-lg font-semibold leading-snug text-slate-900 transition-colors group-hover:text-brand-700">
+                      <Link href={`/news/${news._id}`}>{news.title}</Link>
+                    </h2>
+
+                    <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-600">
+                      {news.excerpt}
+                    </p>
+
+                    <div className="mt-auto pt-4">
+                      <Link
+                        href={`/news/${news._id}`}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-700 hover:text-brand-800"
+                      >
+                        Read full story <ArrowRight size={16} aria-hidden="true" />
+                        <span className="sr-only">: {news.title}</span>
+                      </Link>
+                    </div>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100">
+                <Newspaper className="text-slate-400" size={28} aria-hidden="true" />
+              </div>
+              <h2 className="mt-4 text-lg font-semibold text-slate-900">No news articles yet</h2>
+              <p className="mt-1 text-sm text-slate-500">Check back soon for stories, tips and announcements.</p>
+            </div>
+          )}
         </div>
+
+        {/* Newsletter (visual only, no subscription backend yet) */}
+        <section className="mt-12 rounded-2xl bg-brand-700 px-6 py-10 text-center text-white sm:mt-16 sm:px-12 sm:py-12">
+          <h2 className="text-xl font-bold sm:text-2xl">Subscribe to our newsletter</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-brand-50 sm:text-base">
+            Get early access to weekly deals and the freshest news delivered to your inbox.
+          </p>
+          <div className="mx-auto mt-6 flex max-w-md flex-col gap-2 sm:flex-row">
+            <label htmlFor="newsletter-email" className="sr-only">Email address</label>
+            <input
+              id="newsletter-email"
+              type="email"
+              autoComplete="email"
+              placeholder="Enter your email address"
+              className="h-11 w-full rounded-xl border border-white/30 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/60"
+            />
+            <Button variant="secondary" className="flex-shrink-0 border-white text-brand-700 focus-visible:outline-white">
+              Join
+            </Button>
+          </div>
+        </section>
       </div>
     </div>
   );

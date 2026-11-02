@@ -1,24 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Save, 
-  X, 
-  Image as ImageIcon, 
+import {
+  Plus,
+  Trash2,
+  Edit3,
+  Save,
+  X,
+  Image as ImageIcon,
   ArrowRight,
   Loader2,
   Check,
-  Eye,
-  Settings,
-  ChevronUp,
-  ChevronDown
+  Upload,
+  SlidersHorizontal
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { HERO_THEMES, findHeroTheme, type HeroTheme } from "@/lib/heroThemes";
+import {
+  PANEL_CLASS,
+  LABEL_CLASS,
+  INPUT_CLASS,
+  HELP_CLASS,
+  BADGE_CLASS,
+  BADGE_TONES,
+  ICON_BUTTON_CLASS,
+  ICON_BUTTON_DANGER_CLASS
+} from "@/components/admin/adminStyles";
 
 interface HeroSlide {
   _id?: string;
@@ -38,11 +49,37 @@ interface HeroSlide {
   order: number;
 }
 
+/** Visual on/off track shared by the row toggles and the form's visibility switch. */
+function SwitchTrack({ on }: { on: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+        on ? "bg-success-600" : "bg-slate-300"
+      )}
+    >
+      <span
+        className={cn(
+          "h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+          on ? "translate-x-4.5" : "translate-x-0.5"
+        )}
+      />
+    </span>
+  );
+}
+
+/** Radio card wrapper: the real radio is visually hidden, the card shows checked + focus state. */
+const THEME_CARD_CLASS =
+  "flex h-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2 transition-colors hover:border-slate-300 peer-checked:border-brand-600 peer-checked:ring-2 peer-checked:ring-brand-500/20 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500";
+
 export default function AdminHeroPage() {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  // UI-only: true when the admin explicitly picked "Custom (advanced)" in the theme picker.
+  const [showCustomTheme, setShowCustomTheme] = useState(false);
   const [formData, setFormData] = useState<HeroSlide>({
     title: "",
     highlight: "",
@@ -64,6 +101,16 @@ export default function AdminHeroPage() {
     fetchSlides();
   }, []);
 
+  // Close the slide modal with the Escape key while it is open.
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
+
   const fetchSlides = async () => {
     try {
       const res = await fetch("/api/admin/hero");
@@ -77,6 +124,8 @@ export default function AdminHeroPage() {
   };
 
   const handleOpenModal = (slide?: HeroSlide) => {
+    // Start each open on the preset view; custom values still show "Custom" automatically.
+    setShowCustomTheme(false);
     if (slide) {
       setEditingSlide(slide);
       setFormData(slide);
@@ -161,299 +210,442 @@ export default function AdminHeroPage() {
     }
   };
 
+  // Theme picker: a preset writes the same `gradient` + `decorColor` fields the API stores.
+  const matchedTheme = findHeroTheme(formData.gradient, formData.decorColor);
+  const isCustomTheme = showCustomTheme || !matchedTheme;
+
+  const selectTheme = (theme: HeroTheme) => {
+    setShowCustomTheme(false);
+    setFormData(prev => ({ ...prev, gradient: theme.gradient, decorColor: theme.decorColor }));
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Hero Banners</h2>
-          <p className="text-sm font-medium text-slate-500">Manage the sliding banners on your home page.</p>
+      {/* Header (the admin shell already shows the page title in its top bar) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Home page banners</h2>
+          <p className="text-sm text-slate-500">Manage the slides that rotate at the top of your home page.</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white font-black rounded-xl hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20"
-        >
-          <Plus size={20} /> Add New Slide
-        </button>
+        <Button onClick={() => handleOpenModal()} className="whitespace-nowrap">
+          <Plus size={16} aria-hidden="true" /> Add slide
+        </Button>
       </div>
 
       {isLoading ? (
-        <div className="h-[40vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+        <div className="h-[40vh] flex items-center justify-center" role="status">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+          <span className="sr-only">Loading slides…</span>
+        </div>
+      ) : slides.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+            <ImageIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900">No slides yet</h3>
+          <p className="mt-1 mb-6 text-sm text-slate-500">Create your first banner for the home page.</p>
+          <Button onClick={() => handleOpenModal()}>
+            <Plus size={16} aria-hidden="true" /> Create slide
+          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <ul className={cn(PANEL_CLASS, "divide-y divide-slate-100 overflow-hidden")}>
           {slides.map((slide) => (
-            <motion.div 
+            <motion.li
               key={slide._id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-white rounded-3xl border ${slide.isActive ? 'border-slate-200' : 'border-slate-100 opacity-60'} overflow-hidden shadow-sm hover:shadow-md transition-all group`}
+              className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center"
             >
-              <div className="flex flex-col md:flex-row items-stretch">
-                {/* Preview Thumbnail */}
-                <div className={`w-full md:w-64 h-40 relative flex-shrink-0 bg-gradient-to-br ${slide.gradient} overflow-hidden`}>
-                   {slide.image && (
-                     <Image src={slide.image} alt={slide.title} fill className="object-cover mix-blend-overlay opacity-60" />
-                   )}
-                   <div className="absolute inset-0 p-4 flex flex-col justify-end text-white">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">{slide.tag}</p>
-                      <h4 className="text-sm font-black leading-tight truncate">{slide.title}</h4>
-                   </div>
-                   <div className="absolute top-3 left-3 px-2 py-1 bg-black/30 backdrop-blur-md rounded text-[10px] font-black text-white uppercase tracking-tighter">
-                     Order: {slide.order}
-                   </div>
-                </div>
+              {/* Preview swatch: the slide's real gradient, decor and image */}
+              <div
+                aria-hidden="true"
+                className={`relative h-24 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br sm:h-20 sm:w-40 ${slide.gradient} ${slide.isActive ? "" : "opacity-50 grayscale"}`}
+              >
+                {slide.image && (
+                  <Image src={slide.image} alt="" fill className="object-cover mix-blend-overlay opacity-60" />
+                )}
+                <span className={`absolute -right-4 -top-4 h-14 w-14 rounded-full ${slide.decorColor}`} />
+                <span className="absolute bottom-2 right-2.5 text-2xl leading-none">{slide.emoji}</span>
+                {slide.tag && (
+                  <span className="absolute left-2 top-2 max-w-[70%] truncate rounded-lg bg-black/25 px-2 py-0.5 text-xs font-semibold text-white">
+                    {slide.tag}
+                  </span>
+                )}
+              </div>
 
-                {/* Info & Actions */}
-                <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center gap-6">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-black text-slate-800 truncate">{slide.title}</h3>
-                      {!slide.isActive && (
-                         <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black uppercase tracking-widest rounded">Draft</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-500 line-clamp-1">{slide.subtitle}</p>
-                    <div className="flex items-center gap-3 mt-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                        <ArrowRight size={14} className="text-teal-500" />
-                        CTA: <span className="text-slate-600">{slide.ctaLabel}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 border-l border-slate-100 pl-3">
-                        <ImageIcon size={14} className="text-blue-500" />
-                        {slide.image ? 'Custom Image' : 'Gradient Only'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => toggleActive(slide)}
-                      className={`p-3 rounded-xl transition-all ${slide.isActive ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                      title={slide.isActive ? "Deactivate" : "Activate"}
-                    >
-                      <Check size={20} />
-                    </button>
-                    <button 
-                      onClick={() => handleOpenModal(slide)}
-                      className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all"
-                      title="Edit"
-                    >
-                      <Edit3 size={20} />
-                    </button>
-                    <button 
-                      onClick={() => slide._id && handleDelete(slide._id)}
-                      className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"
-                      title="Delete"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
+              {/* Slide details */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-semibold text-slate-900">
+                  {slide.title}{" "}
+                  {slide.highlight && <span className="font-normal text-slate-500">{slide.highlight}</span>}
+                </h3>
+                <p className="mt-0.5 line-clamp-1 text-sm text-slate-600">{slide.subtitle}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <ArrowRight size={14} className="text-slate-400" aria-hidden="true" />
+                    Button: <span className="font-medium text-slate-700">{slide.ctaLabel}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <ImageIcon size={14} className="text-slate-400" aria-hidden="true" />
+                    {slide.image ? "Custom image" : "Gradient only"}
+                  </span>
+                  <span className={cn(BADGE_CLASS, BADGE_TONES.neutral)}>Order {slide.order}</span>
                 </div>
               </div>
-            </motion.div>
-          ))}
 
-          {slides.length === 0 && (
-            <div className="py-20 bg-white rounded-[2rem] border border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
-               <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
-                 <ImageIcon className="text-slate-300 w-8 h-8" />
-               </div>
-               <h3 className="text-lg font-bold text-slate-800">No slides yet</h3>
-               <p className="text-sm text-slate-500 mb-6">Create your first dynamic banner for the homepage.</p>
-               <button 
-                onClick={() => handleOpenModal()}
-                className="px-6 py-2.5 bg-teal-600 text-white font-black rounded-xl"
-               >
-                 Create Slide
-               </button>
-            </div>
-          )}
-        </div>
+              {/* Actions */}
+              <div className="flex items-center gap-1 self-end sm:self-auto">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={slide.isActive}
+                  onClick={() => toggleActive(slide)}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm font-medium transition-colors hover:bg-slate-100"
+                >
+                  <SwitchTrack on={slide.isActive} />
+                  <span className={cn("w-14 text-left", slide.isActive ? "text-success-700" : "text-slate-500")}>
+                    {slide.isActive ? "Active" : "Inactive"}
+                  </span>
+                  <span className="sr-only">: show “{slide.title}” on the home page</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenModal(slide)}
+                  aria-label={`Edit slide “${slide.title}”`}
+                  title="Edit"
+                  className={ICON_BUTTON_CLASS}
+                >
+                  <Edit3 size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => slide._id && handleDelete(slide._id)}
+                  aria-label={`Delete slide “${slide.title}”`}
+                  title="Delete"
+                  className={ICON_BUTTON_DANGER_CLASS}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </motion.li>
+          ))}
+        </ul>
       )}
 
       {/* Slide Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/50"
             />
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative shadow-2xl"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 12 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="hero-modal-title"
+              aria-describedby="hero-modal-description"
+              className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
             >
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-800">{editingSlide ? "Edit Slide" : "Create New Slide"}</h3>
-                  <p className="text-xs font-black text-teal-600 uppercase tracking-widest mt-1">Hero Banner Configuration</p>
+              <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-4">
+                <div className="min-w-0">
+                  <h2 id="hero-modal-title" className="text-lg font-semibold text-slate-900">
+                    {editingSlide ? "Edit slide" : "Create new slide"}
+                  </h2>
+                  <p id="hero-modal-description" className="text-sm text-slate-500">
+                    Shown in the slider at the top of the home page.
+                  </p>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-slate-50 rounded-2xl text-slate-400 transition-all">
-                  <X size={24} />
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  aria-label="Close"
+                  className={ICON_BUTTON_CLASS}
+                >
+                  <X size={20} aria-hidden="true" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  {/* Left Column: Content */}
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Main Title</label>
-                      <input 
-                        required
-                        value={formData.title}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
-                        placeholder="e.g. Fresh Groceries"
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Highlight Text</label>
-                      <input 
-                        value={formData.highlight}
-                        onChange={(e) => setFormData({...formData, highlight: e.target.value})}
-                        placeholder="e.g. delivered in 60 mins"
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Subtitle / Description</label>
-                      <textarea 
-                        required
-                        value={formData.subtitle}
-                        onChange={(e) => setFormData({...formData, subtitle: e.target.value})}
-                        rows={3}
-                        placeholder="Provide some catchy details..."
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none resize-none"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+                {/* Scrollable fields; the action bar below stays visible */}
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                    {/* Left column: content */}
+                    <div className="space-y-5">
                       <div>
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Button Label</label>
-                        <input 
-                          value={formData.ctaLabel}
-                          onChange={(e) => setFormData({...formData, ctaLabel: e.target.value})}
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                        <label htmlFor="hero-title" className={LABEL_CLASS}>Main title</label>
+                        <input
+                          id="hero-title"
+                          required
+                          value={formData.title}
+                          onChange={(e) => setFormData({...formData, title: e.target.value})}
+                          placeholder="e.g. Fresh Groceries"
+                          className={INPUT_CLASS}
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Link (Slug or URL)</label>
-                        <input 
-                          value={formData.ctaLink}
-                          onChange={(e) => setFormData({...formData, ctaLink: e.target.value})}
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                        <label htmlFor="hero-highlight" className={LABEL_CLASS}>Highlight text</label>
+                        <input
+                          id="hero-highlight"
+                          value={formData.highlight}
+                          onChange={(e) => setFormData({...formData, highlight: e.target.value})}
+                          placeholder="e.g. delivered in 60 mins"
+                          aria-describedby="hero-highlight-help"
+                          className={INPUT_CLASS}
                         />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Badge Text</label>
-                        <input 
-                          value={formData.tag}
-                          onChange={(e) => setFormData({...formData, tag: e.target.value})}
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                        />
+                        <p id="hero-highlight-help" className={HELP_CLASS}>Shown after the title in a contrasting colour.</p>
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Emoji Icon</label>
-                        <input 
-                          value={formData.emoji}
-                          onChange={(e) => setFormData({...formData, emoji: e.target.value})}
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                        <label htmlFor="hero-subtitle" className={LABEL_CLASS}>Subtitle</label>
+                        <textarea
+                          id="hero-subtitle"
+                          required
+                          value={formData.subtitle}
+                          onChange={(e) => setFormData({...formData, subtitle: e.target.value})}
+                          rows={3}
+                          placeholder="Provide some catchy details..."
+                          className={cn(INPUT_CLASS, "resize-none")}
                         />
                       </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="hero-cta-label" className={LABEL_CLASS}>Button label</label>
+                          <input
+                            id="hero-cta-label"
+                            value={formData.ctaLabel}
+                            onChange={(e) => setFormData({...formData, ctaLabel: e.target.value})}
+                            className={INPUT_CLASS}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="hero-cta-link" className={LABEL_CLASS}>Button link</label>
+                          <input
+                            id="hero-cta-link"
+                            value={formData.ctaLink}
+                            onChange={(e) => setFormData({...formData, ctaLink: e.target.value})}
+                            aria-describedby="hero-cta-link-help"
+                            className={INPUT_CLASS}
+                          />
+                          <p id="hero-cta-link-help" className={HELP_CLASS}>Category slug or full URL.</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="hero-tag" className={LABEL_CLASS}>Badge text</label>
+                          <input
+                            id="hero-tag"
+                            value={formData.tag}
+                            onChange={(e) => setFormData({...formData, tag: e.target.value})}
+                            className={INPUT_CLASS}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="hero-emoji" className={LABEL_CLASS}>Emoji icon</label>
+                          <input
+                            id="hero-emoji"
+                            value={formData.emoji}
+                            onChange={(e) => setFormData({...formData, emoji: e.target.value})}
+                            className={INPUT_CLASS}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="hero-order" className={LABEL_CLASS}>Order</label>
+                          <input
+                            id="hero-order"
+                            type="number"
+                            value={formData.order}
+                            onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
+                            aria-describedby="hero-order-help"
+                            className={INPUT_CLASS}
+                          />
+                          <p id="hero-order-help" className={HELP_CLASS}>Lower numbers show first.</p>
+                        </div>
+                        <div>
+                          <label id="hero-visibility-label" htmlFor="hero-visibility" className={LABEL_CLASS}>Visibility</label>
+                          <button
+                            id="hero-visibility"
+                            type="button"
+                            role="switch"
+                            aria-checked={formData.isActive}
+                            aria-labelledby="hero-visibility-label hero-visibility-state"
+                            onClick={() => setFormData({...formData, isActive: !formData.isActive})}
+                            className="flex h-11 w-full items-center gap-3 rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                          >
+                            <SwitchTrack on={formData.isActive} />
+                            <span id="hero-visibility-state">
+                              {formData.isActive ? "Visible on home page" : "Hidden"}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Right Column: Styling & Media */}
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block flex items-center justify-between">
-                        Custom Image 
-                        <span className="text-[9px] font-normal lowercase tracking-normal opacity-60">Leave empty to use gradient only</span>
-                      </label>
-                      <div className="relative group/img h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden flex items-center justify-center">
+                    {/* Right column: media & styling */}
+                    <div className="space-y-5">
+                      <div>
+                        <p id="hero-image-label" className={LABEL_CLASS}>Background image</p>
                         {formData.image ? (
-                          <>
-                            <Image src={formData.image} alt="Preview" fill className="object-cover" />
-                            <button 
+                          <div className="relative h-44 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                            <Image src={formData.image} alt="Background image preview" fill className="object-cover" />
+                            <button
                               type="button"
                               onClick={() => setFormData({...formData, image: ""})}
-                              className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-xl opacity-0 group-hover/img:opacity-100 transition-all shadow-lg"
+                              aria-label="Remove image"
+                              className={cn(ICON_BUTTON_DANGER_CLASS, "absolute right-2 top-2 bg-white/90 shadow-sm")}
                             >
-                              <X size={16} />
+                              <X size={16} aria-hidden="true" />
                             </button>
-                          </>
-                        ) : (
-                          <div className="text-center p-6">
-                            <ImageIcon className="text-slate-300 w-10 h-10 mx-auto mb-2" />
-                            <p className="text-xs text-slate-400 font-bold">Drop image or click to upload</p>
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              onChange={handleImageFile}
-                              className="absolute inset-0 opacity-0 cursor-pointer"
-                            />
                           </div>
+                        ) : (
+                          // The transparent file input covers the whole zone, so it accepts both clicks and dropped files
+                          <label
+                            htmlFor="hero-image"
+                            className="relative flex h-44 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-center transition-colors hover:border-brand-400 hover:bg-brand-50/40 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20"
+                          >
+                            <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                              <Upload size={18} className="text-slate-500" aria-hidden="true" />
+                            </span>
+                            <span className="text-sm font-medium text-slate-700">
+                              Drop an image or click to upload
+                            </span>
+                            <span id="hero-image-help" className="mt-1 text-xs text-slate-500">
+                              Optional. Leave empty to use the gradient only.
+                            </span>
+                            <input
+                              id="hero-image"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageFile}
+                              aria-labelledby="hero-image-label"
+                              aria-describedby="hero-image-help"
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            />
+                          </label>
                         )}
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Background Gradient (Tailwind Classes)</label>
-                      <input 
-                        value={formData.gradient}
-                        onChange={(e) => setFormData({...formData, gradient: e.target.value})}
-                        placeholder="e.g. from-teal-600 via-emerald-600 to-teal-800"
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-mono focus:ring-2 focus:ring-teal-500 outline-none"
-                      />
-                    </div>
+                      {/* Theme picker: presets are literal classes in src/lib/heroThemes.ts, so Tailwind always generates them */}
+                      <fieldset>
+                        <legend className={LABEL_CLASS}>Background theme</legend>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {HERO_THEMES.map((theme) => {
+                            const isChecked = !isCustomTheme && matchedTheme?.id === theme.id;
+                            return (
+                              <label key={theme.id} className="relative block cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="hero-theme"
+                                  value={theme.id}
+                                  checked={isChecked}
+                                  onChange={() => selectTheme(theme)}
+                                  className="peer sr-only"
+                                />
+                                <span className={THEME_CARD_CLASS}>
+                                  <span
+                                    aria-hidden="true"
+                                    className={`relative block h-10 overflow-hidden rounded-lg bg-gradient-to-br ${theme.gradient}`}
+                                  >
+                                    <span className={`absolute -right-2 -top-2 h-7 w-7 rounded-full ${theme.decorColor}`} />
+                                  </span>
+                                  <span className="flex items-center justify-between gap-1 px-0.5 text-sm font-medium text-slate-700">
+                                    {theme.label}
+                                    {isChecked && <Check size={14} className="text-brand-600" aria-hidden="true" />}
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                          <label className="relative block cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hero-theme"
+                              value="custom"
+                              checked={isCustomTheme}
+                              onChange={() => setShowCustomTheme(true)}
+                              className="peer sr-only"
+                            />
+                            <span className={THEME_CARD_CLASS}>
+                              <span
+                                aria-hidden="true"
+                                className="flex h-10 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-500"
+                              >
+                                <SlidersHorizontal size={16} />
+                              </span>
+                              <span className="flex items-center justify-between gap-1 px-0.5 text-sm font-medium text-slate-700">
+                                Custom
+                                {isCustomTheme && <Check size={14} className="text-brand-600" aria-hidden="true" />}
+                              </span>
+                            </span>
+                          </label>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                       <div>
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Order</label>
-                        <input 
-                          type="number"
-                          value={formData.order}
-                          onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Visibility</label>
-                        <button 
-                          type="button"
-                          onClick={() => setFormData({...formData, isActive: !formData.isActive})}
-                          className={`flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest ${
-                            formData.isActive 
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
-                              : 'bg-slate-50 border-slate-200 text-slate-400'
-                          }`}
-                        >
-                          {formData.isActive ? <Check size={16} /> : <X size={16} />}
-                          {formData.isActive ? "Visible" : "Hidden"}
-                        </button>
-                      </div>
-                    </div>
+                        {isCustomTheme && (
+                          <div className="mt-3 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-xs text-slate-600">
+                              <span className="font-semibold text-slate-700">Advanced.</span>{" "}
+                              Tailwind only generates classes already used in the app&apos;s code, so
+                              hand-typed classes may not render. Prefer a preset when possible.
+                            </p>
+                            <div>
+                              <label htmlFor="hero-gradient" className={LABEL_CLASS}>Gradient classes</label>
+                              <input
+                                id="hero-gradient"
+                                value={formData.gradient}
+                                onChange={(e) => setFormData({...formData, gradient: e.target.value})}
+                                placeholder="e.g. from-teal-600 via-emerald-600 to-teal-800"
+                                className={cn(INPUT_CLASS, "font-mono text-xs")}
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="hero-decor" className={LABEL_CLASS}>Decor colour class</label>
+                              <input
+                                id="hero-decor"
+                                value={formData.decorColor}
+                                onChange={(e) => setFormData({...formData, decorColor: e.target.value})}
+                                placeholder="e.g. bg-emerald-400/20"
+                                className={cn(INPUT_CLASS, "font-mono text-xs")}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </fieldset>
 
-                    {/* Quick Preview */}
-                    <div className="pt-4 border-t border-slate-100">
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Live Appearance Preview</label>
-                      <div className={`w-full aspect-[2/1] bg-gradient-to-br ${formData.gradient} rounded-2xl relative overflow-hidden flex flex-col justify-center p-6 text-white`}>
-                        {formData.image && <Image src={formData.image} alt="Preview" fill className="object-cover mix-blend-overlay opacity-60" />}
-                        <div className="relative z-10">
-                          <span className="text-[8px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded backdrop-blur-sm mb-1 inline-block">{formData.tag || 'Sample Tag'}</span>
-                          <h5 className="text-lg font-black leading-tight mb-1">{formData.title || 'Dynamic Hero'}</h5>
-                          <p className="text-[10px] opacity-80 line-clamp-2">{formData.subtitle || 'Your dynamic content will appear here.'}</p>
-                          <div className="mt-3 flex gap-2">
-                             <div className="h-6 w-16 bg-white rounded flex items-center justify-center text-[8px] font-black text-slate-900">{formData.ctaLabel}</div>
-                             <div className="h-6 w-6 bg-white/20 rounded-full flex items-center justify-center text-[10px]">{formData.emoji}</div>
+                      {/* Live preview (mirrors the storefront HeroBanner at a smaller size) */}
+                      <div className="border-t border-slate-200 pt-5">
+                        <p className={LABEL_CLASS}>Live preview</p>
+                        <div className={`relative flex aspect-[2/1] w-full flex-col justify-center overflow-hidden rounded-2xl bg-gradient-to-br p-6 text-white ${formData.gradient}`}>
+                          {formData.image && <Image src={formData.image} alt="" fill className="object-cover mix-blend-overlay opacity-60" />}
+                          <span aria-hidden="true" className={`absolute -right-8 -top-8 h-32 w-32 rounded-full ${formData.decorColor}`} />
+                          <span aria-hidden="true" className={`absolute -bottom-10 left-1/3 h-24 w-24 rounded-full ${formData.decorColor}`} />
+                          <div className="relative z-10">
+                            <span className="mb-2 inline-block rounded-lg bg-white/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
+                              {formData.tag || "Sample tag"}
+                            </span>
+                            {/* Display heading: font-black mirrors the storefront hero */}
+                            <h3 className="mb-1 text-lg font-black leading-tight">
+                              {formData.title || "Dynamic hero"}{" "}
+                              {formData.highlight && <span className={formData.accentColor}>{formData.highlight}</span>}
+                            </h3>
+                            <p className="line-clamp-2 text-xs text-white/90">
+                              {formData.subtitle || "Your content will appear here."}
+                            </p>
+                            <div className="mt-3 flex items-center gap-2">
+                              <span className="inline-flex h-7 items-center rounded-lg bg-white px-3 text-xs font-semibold text-brand-700">
+                                {formData.ctaLabel}
+                              </span>
+                              <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-sm">
+                                {formData.emoji}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -461,21 +653,12 @@ export default function AdminHeroPage() {
                   </div>
                 </div>
 
-                <div className="mt-12 flex items-center gap-3 pt-6 border-t border-slate-100">
-                   <button 
-                    type="submit"
-                    className="flex-1 flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
-                   >
-                     <Save size={20} />
-                     {editingSlide ? "Update Slide Configuration" : "Launch New Hero Slide"}
-                   </button>
-                   <button 
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-8 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl hover:bg-slate-200 transition-all"
-                   >
-                     Cancel
-                   </button>
+                <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:justify-end">
+                  <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit">
+                    <Save size={16} aria-hidden="true" />
+                    {editingSlide ? "Save changes" : "Create slide"}
+                  </Button>
                 </div>
               </form>
             </motion.div>

@@ -5,6 +5,7 @@ import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 import AuthProvider from '@/context/AuthProvider';
 import CartDrawer from '@/components/layout/CartDrawer';
+import SiteHeader from '@/components/layout/SiteHeader';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -36,6 +37,7 @@ export default function RootLayout({
           <WishlistProvider>
             <CartProvider>
               <MaintenanceGuard>
+                <SiteHeader />
                 <div className="flex-1">
                   {children}
                 </div>

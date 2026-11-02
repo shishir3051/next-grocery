@@ -1,62 +1,62 @@
 "use client";
 
+/* Shared styles for each numbered section of the terms */
+const headingClass = "text-lg font-semibold text-slate-900";
+const bodyClass = "mt-2 text-base leading-relaxed text-slate-700";
+
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="bg-slate-50 border-b border-slate-100 py-24 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">Terms & <span className="text-teal-600">Conditions</span></h1>
-        <p className="text-slate-500 max-w-xl mx-auto font-medium">
-          Please read these terms carefully before using the FreshBasket platform.
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+        {/* Page title */}
+        <header className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Legal</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Terms &amp; conditions</h1>
+          <p className="mt-3 text-base text-slate-600">
+            Please read these terms carefully before using the FreshBasket platform.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">Last updated: April 08, 2026</p>
+        </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-20">
-        <article className="prose prose-slate max-w-none">
-          <div className="space-y-12">
-            <section className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-800">1. Acceptance of Terms</h2>
-              <p className="text-slate-600 leading-relaxed font-medium">
-                By accessing and using this website, you accept and agree to be bound by the terms and provision of this agreement. In addition, when using this website's particular services, you shall be subject to any posted guidelines or rules applicable to such services.
-              </p>
-            </section>
+        <article className="mt-8 max-w-3xl space-y-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:mt-10 sm:p-10">
+          <section>
+            <h2 className={headingClass}>1. Acceptance of terms</h2>
+            <p className={bodyClass}>
+              By accessing and using this website, you accept and agree to be bound by the terms and provision of this agreement. In addition, when using this website&apos;s particular services, you shall be subject to any posted guidelines or rules applicable to such services.
+            </p>
+          </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-800">2. Ordering Policy</h2>
-              <ul className="list-disc pl-5 space-y-3 text-slate-600 font-medium">
-                <li>Orders can be placed via the website or mobile application.</li>
-                <li>The minimum order value for delivery is ৳100.</li>
-                <li>FreshBasket reserves the right to cancel any order in case of stock unavailability or incorrect pricing.</li>
-                <li>Delivery times are estimates and may vary due to traffic or weather conditions.</li>
-              </ul>
-            </section>
+          <section>
+            <h2 className={headingClass}>2. Ordering policy</h2>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-base leading-relaxed text-slate-700 marker:text-brand-600">
+              <li>Orders can be placed via the website or mobile application.</li>
+              <li>The minimum order value for delivery is ৳100.</li>
+              <li>FreshBasket reserves the right to cancel any order in case of stock unavailability or incorrect pricing.</li>
+              <li>Delivery times are estimates and may vary due to traffic or weather conditions.</li>
+            </ul>
+          </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-800">3. Pricing & Payments</h2>
-              <p className="text-slate-600 leading-relaxed font-medium">
-                Prices for all products on the platform are in Bangladeshi Taka (BDT) and include VAT where applicable. We accept Cash on Delivery and various digital payment methods. All payments are processed through secure, 100% encrypted gateways.
-              </p>
-            </section>
+          <section>
+            <h2 className={headingClass}>3. Pricing &amp; payments</h2>
+            <p className={bodyClass}>
+              Prices for all products on the platform are in Bangladeshi Taka (BDT) and include VAT where applicable. We accept Cash on Delivery and various digital payment methods. All payments are processed through secure, 100% encrypted gateways.
+            </p>
+          </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-800">4. Modification of Service</h2>
-              <p className="text-slate-600 leading-relaxed font-medium">
-                FreshBasket reserves the right at any time to modify or discontinue the Service (or any part or content thereof) without notice at any time. We shall not be liable to you or to any third-party for any modification, price change, suspension or discontinuance of the Service.
-              </p>
-            </section>
+          <section>
+            <h2 className={headingClass}>4. Modification of service</h2>
+            <p className={bodyClass}>
+              FreshBasket reserves the right at any time to modify or discontinue the Service (or any part or content thereof) without notice at any time. We shall not be liable to you or to any third-party for any modification, price change, suspension or discontinuance of the Service.
+            </p>
+          </section>
 
-            <section className="space-y-4">
-              <h2 className="text-2xl font-black text-slate-800">5. Governing Law</h2>
-              <p className="text-slate-600 leading-relaxed font-medium">
-                These Terms and Conditions shall be governed by and construed in accordance with the laws of the People's Republic of Bangladesh.
-              </p>
-            </section>
-          </div>
+          <section>
+            <h2 className={headingClass}>5. Governing law</h2>
+            <p className={bodyClass}>
+              These Terms and Conditions shall be governed by and construed in accordance with the laws of the People&apos;s Republic of Bangladesh.
+            </p>
+          </section>
         </article>
-
-        <div className="mt-20 p-10 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center">
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Last Updated</p>
-            <p className="text-lg font-black text-slate-800 italic">April 08, 2026</p>
-        </div>
       </div>
     </div>
   );

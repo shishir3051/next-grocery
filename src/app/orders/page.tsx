@@ -3,12 +3,34 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { Package, Clock, CheckCircle2, ChevronRight, Loader2, ShoppingBag, MapPin } from "lucide-react";
-import Link from "next/link";
+import { Package, Clock, CheckCircle2, ChevronRight, Loader2, ShoppingBag, MapPin, Truck, XCircle, type LucideIcon } from "lucide-react";
 import Image from "next/image";
+import Button from "@/components/ui/Button";
+
+/**
+ * One colour + icon + text label per order status (never colour alone).
+ * pending = accent, processing = brand, shipped = slate, delivered = success, cancelled = danger.
+ */
+const ORDER_STATUS_STYLES: Record<string, { label: string; className: string; Icon: LucideIcon }> = {
+  pending:    { label: "Pending",    className: "bg-accent-50 text-accent-800 border-accent-200",  Icon: Clock },
+  processing: { label: "Processing", className: "bg-brand-50 text-brand-700 border-brand-200",     Icon: Package },
+  shipped:    { label: "Shipped",    className: "bg-slate-100 text-slate-700 border-slate-300",    Icon: Truck },
+  delivered:  { label: "Delivered",  className: "bg-success-50 text-success-700 border-success-100", Icon: CheckCircle2 },
+  cancelled:  { label: "Cancelled",  className: "bg-danger-50 text-danger-700 border-danger-200",  Icon: XCircle },
+};
+
+function getStatusStyle(status: string) {
+  return ORDER_STATUS_STYLES[status] ?? {
+    label: status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown",
+    className: "bg-slate-100 text-slate-700 border-slate-200",
+    Icon: Clock,
+  };
+}
+
+const OVERLINE_CLASS = "text-xs font-semibold text-slate-500 uppercase tracking-wide";
 
 export default function OrdersPage() {
   const { data: session, status } = useSession();
@@ -17,6 +39,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (searchParams.get('session') === 'success' && items.length > 0) {
@@ -48,132 +71,141 @@ export default function OrdersPage() {
 
   if (status === "loading" || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+      <div className="min-h-[60vh] flex items-center justify-center" role="status">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+        <span className="sr-only">Loading your orders…</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 md:py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="min-h-screen bg-slate-50 py-8 sm:py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Order History</h1>
-            <p className="text-slate-500 mt-2">Track and manage your recent purchases</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Order history</h1>
+            <p className="text-sm text-slate-600 mt-1">Track and manage your recent purchases</p>
           </div>
-          <Link href="/" className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
-            <ShoppingBag size={16} />
-            Continue Shopping
-          </Link>
-        </header>
+          {/* Only shown alongside orders; the empty state has its own call to action */}
+          {orders.length > 0 && (
+            <Button href="/" variant="secondary" size="sm" className="self-start sm:self-auto h-10">
+              <ShoppingBag size={16} aria-hidden="true" />
+              Continue shopping
+            </Button>
+          )}
+        </div>
 
         {orders.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Package className="text-slate-300 w-10 h-10" />
+          <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm">
+            <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-5">
+              <Package className="text-brand-600 w-8 h-8" aria-hidden="true" />
             </div>
-            <h2 className="text-xl font-bold text-slate-800">No orders yet</h2>
-            <p className="text-slate-500 mt-2 mb-8">Ready to order some fresh groceries?</p>
-            <Link href="/" className="inline-flex items-center gap-2 px-8 py-3 bg-teal-600 text-white font-bold rounded-2xl hover:bg-teal-700 transition-all">
-              Browse Products
-              <ChevronRight size={18} />
-            </Link>
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900">No orders yet</h2>
+            <p className="text-sm text-slate-600 mt-2 mb-6">Ready to order some fresh groceries?</p>
+            <Button href="/">
+              Browse products
+              <ChevronRight size={18} aria-hidden="true" />
+            </Button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {orders.map((order) => (
-              <motion.div
-                key={order._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all"
-              >
-                <div className="p-6 md:p-8">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-50">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center">
-                        <Package className="text-teal-600 w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order ID</p>
-                        <p className="font-bold text-slate-800">#{order._id.slice(-8).toUpperCase()}</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      <div className="px-4 py-1.5 bg-slate-50 rounded-full text-xs font-bold text-slate-600 border border-slate-100 flex items-center gap-2">
-                        <Clock size={14} />
-                        {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                      <div className={`px-4 py-1.5 rounded-full text-xs font-bold border flex items-center gap-2 ${
-                        order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                        order.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                        'bg-teal-50 text-teal-600 border-teal-100'
-                      }`}>
-                        {order.status === 'delivered' ? <CheckCircle2 size={14} /> : <Clock size={14} />}
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </div>
-                    </div>
-                  </div>
+          <ul className="space-y-6">
+            {orders.map((order) => {
+              const statusStyle = getStatusStyle(order.status);
+              const StatusIcon = statusStyle.Icon;
+              const isPaid = order.paymentStatus === 'paid';
 
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {/* Items Section */}
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Items Summary</h3>
-                      <div className="space-y-4">
-                        {order.items.map((item: any, idx: number) => (
-                          <div key={idx} className="flex items-center gap-4">
-                            <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
-                              <Image src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill className="object-cover" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-sm font-bold text-slate-800">{item.name}</h4>
-                              <p className="text-xs text-slate-500">{item.quantity} x ৳{item.price}</p>
-                            </div>
-                            <span className="text-sm font-bold text-slate-800">৳{item.price * item.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Delivery Section */}
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Delivery Details</h3>
-                        <div className="flex gap-3">
-                          <MapPin size={18} className="text-slate-300 mt-1" />
-                          <div className="text-sm">
-                            <p className="font-bold text-slate-800">{order.shippingAddress.street}</p>
-                            <p className="text-slate-500">{order.shippingAddress.city}, {order.shippingAddress.zipCode}</p>
-                            <p className="text-slate-500 mt-1">{order.shippingAddress.phone}</p>
-                          </div>
+              return (
+                <motion.li
+                  key={order._id}
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <article className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-5 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 bg-brand-50 rounded-xl flex items-center justify-center shrink-0">
+                          <Package className="text-brand-600 w-5 h-5" aria-hidden="true" />
                         </div>
-                      </div>
-                      <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 text-left">Total Paid</p>
-                          <p className="text-lg font-black text-teal-600">৳{order.totalAmount}</p>
+                          <p className="text-xs text-slate-500">Order ID</p>
+                          <h2 className="font-semibold text-slate-900">#{order._id.slice(-8).toUpperCase()}</h2>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Payment</p>
-                          <div className="flex flex-col items-end gap-1">
-                            <p className="text-sm font-bold text-slate-800">
-                              {order.paymentProvider === 'sslcommerz' || order.paymentProvider === 'stripe' ? 'Online Payment' : 'Cash on Delivery'}
-                            </p>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                              order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                            }`}>
-                              {order.paymentStatus}
-                            </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1 bg-slate-50 rounded-full text-xs font-medium text-slate-600 border border-slate-200 inline-flex items-center gap-1.5">
+                          <Clock size={14} aria-hidden="true" />
+                          <time dateTime={order.createdAt}>
+                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </time>
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${statusStyle.className}`}>
+                          <StatusIcon size={14} aria-hidden="true" />
+                          <span className="sr-only">Status: </span>
+                          {statusStyle.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6 md:gap-8">
+                      {/* Items Section */}
+                      <section>
+                        <h3 className={`${OVERLINE_CLASS} mb-3`}>Items</h3>
+                        <ul className="space-y-3">
+                          {order.items.map((item: any, idx: number) => (
+                            <li key={idx} className="flex items-center gap-3">
+                              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-200 shrink-0">
+                                <Image src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill sizes="56px" className="object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-semibold text-slate-800 truncate">{item.name}</h4>
+                                <p className="text-xs text-slate-500">{item.quantity} × ৳{item.price}</p>
+                              </div>
+                              <span className="text-sm font-semibold text-slate-900">৳{item.price * item.quantity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+
+                      {/* Delivery Section */}
+                      <div className="space-y-5">
+                        <section>
+                          <h3 className={`${OVERLINE_CLASS} mb-3`}>Delivery details</h3>
+                          <div className="flex gap-3">
+                            <MapPin size={18} className="text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
+                            <address className="text-sm not-italic">
+                              <p className="font-semibold text-slate-800">{order.shippingAddress.street}</p>
+                              <p className="text-slate-600">{order.shippingAddress.city}, {order.shippingAddress.zipCode}</p>
+                              <p className="text-slate-600 mt-1">{order.shippingAddress.phone}</p>
+                            </address>
+                          </div>
+                        </section>
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1">Order total</p>
+                            <p className="text-lg font-bold text-brand-700">৳{order.totalAmount}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-slate-500 mb-1">Payment</p>
+                            <div className="flex flex-col items-end gap-1">
+                              <p className="text-sm font-semibold text-slate-800">
+                                {order.paymentProvider === 'sslcommerz' || order.paymentProvider === 'stripe' ? 'Online payment' : 'Cash on delivery'}
+                              </p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold capitalize ${
+                                isPaid ? 'bg-success-100 text-success-700' : 'bg-slate-200 text-slate-700'
+                              }`}>
+                                {order.paymentStatus}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  </article>
+                </motion.li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

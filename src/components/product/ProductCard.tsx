@@ -1,10 +1,12 @@
 'use client';
 import { useCart } from '@/context/CartContext';
-import { Plus, Minus, ShoppingCart, Heart } from 'lucide-react';
+import { Plus, Minus, Heart } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useWishlist } from '@/context/WishlistContext';
+import { getEffectivePrice, getSavings } from '@/lib/pricing';
+import { cn } from '@/lib/cn';
+import ProductDetailsDialog from './ProductDetailsDialog';
 
 interface Product {
   _id: string;
@@ -18,25 +20,33 @@ interface Product {
   isOrganic?: boolean;
   isHalal?: boolean;
   stock: number;
+  description?: string;
+  category?: { name?: string } | string | null;
 }
 
 interface ProductCardProps {
   product: Product;
 }
 
+/** Stock below this number (but above zero) shows an "Only N left" hint. */
+const LOW_STOCK_THRESHOLD = 10;
+
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, updateQuantity, items } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [isAdding, setIsAdding] = useState(false);
-  
-  const isWishlisted = isInWishlist(product._id);
+  const [showDetails, setShowDetails] = useState(false);
 
+  const isWishlisted = isInWishlist(product._id);
 
   const cartItem = items.find(i => i.id === product._id);
   const qty = cartItem?.quantity ?? 0;
+  const isOutOfStock = product.stock <= 0;
+  const isLowStock = !isOutOfStock && product.stock < LOW_STOCK_THRESHOLD;
 
-  const discountAmount = Number(product.discountPrice) || 0;
-  const finalPrice = product.price - discountAmount;
+  // discountPrice is the sale price, not an amount off (see lib/pricing.ts)
+  const finalPrice = getEffectivePrice(product);
+  const discountAmount = getSavings(product);
   const imageUrl = product.imageData || (product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=400');
 
   const handleAdd = () => {
@@ -45,149 +55,167 @@ export default function ProductCard({ product }: ProductCardProps) {
     setTimeout(() => setIsAdding(false), 300);
   };
 
+  // The card is always visible: no scroll-triggered entrance animation, only a
+  // cheap CSS hover state (shadow + border), so long catalogs never render blank.
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20, rotateX: 5 }}
-      whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-      whileHover={{ y: -2, boxShadow: "0 10px 25px -5px rgba(13, 148, 136, 0.1)" }}
-      viewport={{ once: false, amount: 0.1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      style={{ transformPerspective: 1000 }}
-      className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 hover:border-teal-200 transition-colors duration-200 flex flex-col h-full z-0 hover:z-10"
-    >
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-brand-200 hover:shadow-md">
       {/* Image */}
-      <div className="relative pt-[75%] bg-slate-50 overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-brand-50">
         <Image
           src={imageUrl}
           alt={product.name}
           fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 640px) 50vw, 200px"
+          className={cn(
+            'object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transform-none',
+            isOutOfStock && 'opacity-60 grayscale'
+          )}
+          sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 240px"
         />
 
-        {/* Discount Sticker Badge */}
+        {/* The whole image opens the details dialog (badges sit above it; the heart stays its own button) */}
+        {/* Mouse/touch shortcut only; the product name below is the keyboard and screen-reader path */}
+        <button
+          type="button"
+          onClick={() => setShowDetails(true)}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="absolute inset-0 z-[5] cursor-pointer"
+        />
+
+        {/* Savings badge (deals use the accent colour, never red) */}
         {discountAmount > 0 && (
-          <div className="absolute top-2 left-2 z-10 origin-top">
-            <div className="bg-red-600 text-white px-2 py-1 rounded-md text-[10px] font-bold flex flex-col items-center leading-none shadow-sm backdrop-blur-sm">
-              <span className="text-[8px] opacity-90 mb-0.5">SAVE</span>
-              <span className="text-sm font-black">৳{discountAmount}</span>
-            </div>
-          </div>
+          <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-lg bg-accent-400 px-2 py-1 text-xs font-bold text-slate-900 shadow-sm">
+            Save ৳{discountAmount}
+          </span>
         )}
 
-        <div className="absolute top-2 right-2 flex items-start gap-1.5 z-20">
-          <div className="flex flex-col items-end gap-1 pt-1">
-            {product.isOrganic && (
-              <span className="px-2 py-0.5 bg-emerald-500/95 text-white text-[9px] font-semibold rounded-full shadow-sm backdrop-blur-sm">
-                🌿 Organic
-              </span>
-            )}
-            {product.isHalal && (
-              <span className="px-2 py-0.5 bg-teal-600/95 text-white text-[9px] font-semibold rounded-full shadow-sm backdrop-blur-sm">
-                ☪ Halal
-              </span>
-            )}
-            {product.stock <= 0 && (
-              <span className="px-2 py-0.5 bg-slate-800/95 text-white text-[9px] font-semibold rounded-full shadow-sm border backdrop-blur-sm">
-                🚫 Out of Stock
-              </span>
-            )}
-          </div>
-
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleWishlist(product);
-            }}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-md border ${
-              isWishlisted ? 'bg-red-50 border-red-100 text-red-500' : 'bg-white/90 border-white/40 text-slate-400 hover:text-red-500 hover:bg-white'
-            }`}
-          >
-            <Heart size={16} fill={isWishlisted ? "currentColor" : "none"} className={isWishlisted ? 'scale-110 transition-transform' : ''} />
-          </button>
-        </div>
-
-        {/* Quick Add Overlay */}
-        {qty === 0 && product.stock > 0 && (
-          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/5 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleAdd}
-              className={`px-4 py-2 bg-white/95 text-teal-700 text-xs font-bold rounded-full shadow-md hover:bg-teal-600 hover:text-white transition-colors duration-200 flex items-center gap-1.5 border border-slate-100 ${
-                isAdding ? 'scale-95 bg-teal-600 text-white' : ''
-              }`}
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              Quick Add
-            </motion.button>
-          </div>
+        {isOutOfStock && (
+          <span className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg bg-slate-900/80 px-2 py-1 text-xs font-semibold text-white">
+            Out of stock
+          </span>
         )}
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWishlist(product);
+          }}
+          aria-label={`Save ${product.name} to wishlist`}
+          aria-pressed={isWishlisted}
+          className={cn(
+            'absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition-colors',
+            isWishlisted
+              ? 'border-brand-200 bg-brand-50 text-brand-600'
+              : 'border-white/60 bg-white/90 text-slate-500 hover:bg-white hover:text-brand-600'
+          )}
+        >
+          <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true" />
+        </button>
       </div>
 
       {/* Details */}
-      <div className="p-3 flex flex-col flex-1 bg-white relative">
-        <p className="text-xs text-slate-500 mb-1">{product.unit}</p>
-        <h3 className="text-sm font-semibold text-slate-800 leading-snug mb-3 line-clamp-2 flex-1 group-hover:text-teal-700 transition-colors">
-          {product.name}
-        </h3>
-
-        {/* Price & Cart Control */}
-        <div className="flex items-center justify-between mt-auto">
-          <div>
-            {discountAmount > 0 ? (
-              <div className="flex flex-col leading-tight">
-                <span className="text-base font-bold text-teal-700 tracking-tight">৳{finalPrice}</span>
-                <span className="text-xs text-slate-400 line-through">৳{product.price}</span>
-              </div>
-            ) : (
-              <span className="text-base font-bold text-teal-700 tracking-tight">৳{product.price}</span>
-            )}
-          </div>
-
-          {/* Quantity Pill */}
-          {product.stock <= 0 ? (
-             <div className="px-3 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded-full">
-               Unavailable
-             </div>
-          ) : qty === 0 ? (
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleAdd}
-              className="w-8 h-8 rounded-full bg-teal-50 border border-teal-100 hover:bg-teal-600 text-teal-600 hover:text-white flex items-center justify-center transition-colors duration-200"
-            >
-              <Plus size={16} strokeWidth={2} />
-            </motion.button>
-          ) : (
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="flex items-center gap-1 bg-teal-600 rounded-full p-1"
-            >
-              <button
-                onClick={() => updateQuantity(product._id, -1)}
-                className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-              >
-                <Minus size={14} strokeWidth={2} />
-              </button>
-              <span className="text-white text-xs font-semibold w-5 text-center">{qty}</span>
-              <button
-                disabled={qty >= product.stock}
-                onClick={() => updateQuantity(product._id, 1)}
-                className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors disabled:opacity-30 disabled:hover:bg-white/20"
-              >
-                <Plus size={14} strokeWidth={2} />
-              </button>
-            </motion.div>
+      <div className="flex flex-1 flex-col p-3">
+        {/* Meta row: unit + certification chips */}
+        <div className="mb-1 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-slate-500">{product.unit}</span>
+          {product.isOrganic && (
+            <span className="rounded-full bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700">
+              Organic
+            </span>
+          )}
+          {product.isHalal && (
+            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+              Halal
+            </span>
           )}
         </div>
-        {product.stock > 0 && product.stock < 10 && (
-           <p className="text-[10px] font-medium text-red-500 mt-2 flex items-center justify-end gap-1">
-             ⚡ {product.stock} left
-           </p>
+
+        <h3 className="mb-2 min-h-[2.5rem] text-sm font-semibold leading-5 text-slate-800">
+          <button
+            type="button"
+            onClick={() => setShowDetails(true)}
+            aria-haspopup="dialog"
+            className="block w-full text-left hover:text-brand-700 hover:underline underline-offset-2"
+          >
+            {/* The clamp must be inside the button: a button is one inline box, so clamping the h3 does nothing */}
+            <span className="line-clamp-2">{product.name}</span>
+          </button>
+        </h3>
+
+        {/* Price row: sale price in brand colour, original price struck through */}
+        <div className="mb-3 mt-auto flex items-end justify-between gap-2">
+          <p className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
+            <span className="text-base font-bold tracking-tight text-brand-700">
+              {discountAmount > 0 && <span className="sr-only">Sale price </span>}
+              ৳{finalPrice}
+            </span>
+            {discountAmount > 0 && (
+              <del className="text-xs text-slate-500">
+                <span className="sr-only">Original price </span>৳{product.price}
+              </del>
+            )}
+          </p>
+          {isLowStock && (
+            <span className="whitespace-nowrap text-xs font-medium text-accent-700">
+              Only {product.stock} left
+            </span>
+          )}
+        </div>
+
+        {/* Cart control: full-width so it is easy to hit on phones */}
+        {isOutOfStock ? (
+          <div className="flex h-10 items-center justify-center rounded-lg bg-slate-100 text-sm font-medium text-slate-500">
+            Unavailable
+          </div>
+        ) : qty === 0 ? (
+          <button
+            type="button"
+            onClick={handleAdd}
+            aria-label={`Add ${product.name} to cart`}
+            className={cn(
+              'flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 text-sm font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white active:scale-[0.98]',
+              isAdding && 'border-brand-600 bg-brand-600 text-white'
+            )}
+          >
+            <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+            Add
+          </button>
+        ) : (
+          <div className="flex h-10 items-center justify-between rounded-lg bg-brand-600 text-white">
+            <button
+              type="button"
+              onClick={() => updateQuantity(product._id, -1)}
+              aria-label={`Decrease quantity of ${product.name}`}
+              className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-brand-700"
+            >
+              <Minus size={16} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+            <span className="text-sm font-semibold tabular-nums" aria-live="polite">
+              {qty} <span className="font-normal text-brand-50">in cart</span>
+            </span>
+            <button
+              type="button"
+              disabled={qty >= product.stock}
+              onClick={() => updateQuantity(product._id, 1)}
+              aria-label={`Increase quantity of ${product.name}`}
+              className="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+          </div>
         )}
       </div>
-    </motion.div>
+
+      {showDetails && (
+        <ProductDetailsDialog
+          product={product}
+          imageUrl={imageUrl}
+          open={showDetails}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
+    </article>
   );
 }

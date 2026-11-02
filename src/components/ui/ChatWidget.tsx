@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, User, Bot, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { X, Send, Bot } from "lucide-react";
+import { getEffectivePrice } from "@/lib/pricing";
+import Button from "@/components/ui/Button";
+
+// Ids that tie the dialog to its title and the input to its label.
+const TITLE_ID = "chat-widget-title";
+const INPUT_ID = "chat-widget-input";
 
 interface Message {
   id: number;
@@ -18,12 +25,35 @@ export default function ChatWidget({ isOpen, onClose }: { isOpen: boolean; onClo
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  // Move keyboard focus into the chat when it opens, and hand it back to whatever
+  // opened it (e.g. the launcher button) when it closes, so focus is never lost to <body>.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    inputRef.current?.focus();
+    return () => {
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [isOpen]);
+
+  // Escape closes the chat (same onClose the close button uses).
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -79,8 +109,7 @@ export default function ChatWidget({ isOpen, onClose }: { isOpen: boolean; onClo
         
         if (products.length > 0) {
           const p = products[0];
-          const discount = Number(p.discountPrice) || 0;
-          const finalPrice = p.price - discount;
+          const finalPrice = getEffectivePrice(p);
           
           if (products.length === 1) {
             return `Yes! We have "${p.name}" in stock for ৳${finalPrice} per ${p.unit}. Would you like to add it to your cart?`;
@@ -94,85 +123,131 @@ export default function ChatWidget({ isOpen, onClose }: { isOpen: boolean; onClo
     }
 
     // 3. Fallback
-    return "Thank you for reaching out! I couldn't find a specific answer for that, but a human agent will be with you shortly to help.";
+    // There is no live agent behind this chat, so point people to the real support channels.
+    return "Sorry, I couldn't find an answer to that. Please visit our Contact page or email our support team, and we'll get back to you as soon as we can.";
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="fixed bottom-6 right-6 z-[2000] w-[350px] md:w-[400px] h-[500px] bg-white rounded-[2.5rem] shadow-2xl shadow-teal-900/10 border border-slate-100 flex flex-col overflow-hidden"
+          role="dialog"
+          aria-labelledby={TITLE_ID}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          transition={{ duration: 0.2 }}
+          // Full width minus a 16px gutter on phones, a 400px panel from `sm` up.
+          className="fixed inset-x-4 bottom-4 z-[2000] flex h-[min(560px,calc(100dvh-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[400px]"
         >
           {/* Header */}
-          <div className="bg-teal-600 p-6 text-white flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Bot size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm">Fresh Support</h3>
-                <p className="text-[10px] text-teal-100">Usually responds in minutes</p>
+          <div className="flex items-center justify-between gap-3 bg-brand-600 px-4 py-3 text-white">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/15" aria-hidden="true">
+                <Bot size={22} />
+              </span>
+              <div className="min-w-0">
+                <h2 id={TITLE_ID} className="text-base font-semibold leading-tight">Fresh Support</h2>
+                <p className="text-xs text-brand-50">Instant answers about orders and products</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-all">
-              <X size={20} />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close chat"
+              // The global focus ring is brand-600, invisible on this header, so use white here.
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/15 focus-visible:outline-white"
+            >
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
 
-          {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
-            {messages.map((m) => (
-              <motion.div 
-                key={m.id}
-                initial={{ opacity: 0, x: m.sender === 'user' ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`max-w-[80%] p-4 rounded-3xl text-sm font-medium shadow-sm ${
-                  m.sender === 'user' 
-                    ? 'bg-teal-600 text-white rounded-tr-none' 
-                    : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
-                }`}>
-                  {m.text}
-                </div>
-              </motion.div>
-            ))}
+          {/* Messages: role="log" + aria-live so screen readers announce new replies */}
+          <div
+            ref={scrollRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+            className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-5"
+          >
+            {messages.map((m) => {
+              const isUser = m.sender === 'user';
+              return (
+                <motion.div
+                  key={m.id}
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  {!isUser && <BotAvatar />}
+                  <div
+                    className={`max-w-[80%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      isUser
+                        ? 'rounded-br-lg bg-brand-600 text-white'
+                        : 'rounded-bl-lg border border-slate-200 bg-white text-slate-700 shadow-sm'
+                    }`}
+                  >
+                    <span className="sr-only">{isUser ? 'You: ' : 'Fresh Support: '}</span>
+                    {m.text}
+                  </div>
+                </motion.div>
+              );
+            })}
             {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-white p-4 rounded-3xl rounded-tl-none border border-slate-100 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-teal-300 rounded-full animate-bounce" />
-                  <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+              <div className="flex items-end gap-2" role="status">
+                <BotAvatar />
+                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-lg border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
+                  <span className="sr-only">Fresh Support is typing</span>
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:0.2s]" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:0.4s]" aria-hidden="true" />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Footer Input */}
-          <div className="p-4 bg-white border-t border-slate-100">
-            <div className="relative flex items-center">
+          {/* Footer input */}
+          <div className="border-t border-slate-200 bg-white p-3">
+            <label htmlFor={INPUT_ID} className="sr-only">Type your question</label>
+            <div className="flex items-center gap-2">
               <input
+                id={INPUT_ID}
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Type your question..."
-                className="w-full pl-6 pr-14 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none"
+                autoComplete="off"
+                className="h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               />
-              <button 
+              <Button
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="absolute right-2 p-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all disabled:opacity-30"
+                aria-label="Send message"
+                className="w-11 flex-shrink-0 px-0"
               >
-                <Send size={18} />
-              </button>
+                <Send size={18} aria-hidden="true" />
+              </Button>
             </div>
+            <p className="mt-2 text-center text-xs text-slate-500">
+              Need more help?{' '}
+              <Link href="/contact" className="font-medium text-brand-700 underline-offset-2 hover:underline">
+                Contact our team
+              </Link>
+            </p>
           </div>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/** Small round avatar shown next to every assistant message. */
+function BotAvatar() {
+  return (
+    <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700" aria-hidden="true">
+      <Bot size={16} />
+    </span>
   );
 }

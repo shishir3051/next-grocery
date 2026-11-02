@@ -4,21 +4,93 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
-  --color-teal-50: #f0fdfa;
-  --color-teal-100: #ccfbf1;
-  --color-teal-200: #99f6e4;
-  --color-teal-400: #2dd4bf;
-  --color-teal-500: #14b8a6;
-  --color-teal-600: #0d9488;
-  --color-teal-700: #0f766e;
-  --color-teal-900: #134e4a;
+  /* Legacy teal-* classes follow the brand scale so there is only one green-blue in the UI. */
+  --color-teal-50: var(--color-brand-50);
+  --color-teal-100: var(--color-brand-100);
+  --color-teal-200: var(--color-brand-200);
+  --color-teal-300: var(--color-brand-300);
+  --color-teal-400: var(--color-brand-400);
+  --color-teal-500: var(--color-brand-500);
+  --color-teal-600: var(--color-brand-600);
+  --color-teal-700: var(--color-brand-700);
+  --color-teal-800: var(--color-brand-800);
+  --color-teal-900: var(--color-brand-900);
+}
+
+/*
+ * Design tokens. See docs/design/DESIGN_SYSTEM.md.
+ * Palette "Fresh market":
+ * brand   = deep teal, the one action colour   → bg-brand-600, text-brand-700 …
+ * success = leaf green: freshness, organic, confirmations (clearly not the brand hue)
+ * accent  = tangerine: deals, savings, promotions
+ * danger  = errors and destructive actions (red), never a brand colour
+ * slate   = warm sage-tinted neutrals (overrides Tailwind's cold blue-grey everywhere)
+ */
+@theme {
+  /* Sage neutrals. Contrast on white: 500 = 5.3:1 (muted text), 600 = 7.8:1, 400 = 2.8:1 (placeholders only). */
+  --color-slate-50: #f3f6f3;
+  --color-slate-100: #e9eeea;
+  --color-slate-200: #dae3dc;
+  --color-slate-300: #c3d0c7;
+  --color-slate-400: #8fa096;
+  --color-slate-500: #5f7067;
+  --color-slate-600: #47564e;
+  --color-slate-700: #34413a;
+  --color-slate-800: #222c27;
+  --color-slate-900: #131a16;
+
+  /* Soft, layered shadows tinted with the neutral hue give cards real depth on the tinted canvas. */
+  --shadow-xs: 0 1px 2px rgb(19 40 30 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(19 40 30 / 0.06), 0 2px 6px -1px rgb(19 40 30 / 0.07);
+  --shadow-md: 0 2px 4px -1px rgb(19 40 30 / 0.07), 0 8px 18px -4px rgb(19 40 30 / 0.12);
+  --shadow-lg: 0 4px 8px -2px rgb(19 40 30 / 0.08), 0 16px 32px -8px rgb(19 40 30 / 0.16);
+  --shadow-xl: 0 8px 16px -4px rgb(19 40 30 / 0.10), 0 28px 48px -12px rgb(19 40 30 / 0.22);
+
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  /* 600 is the main action colour: white text on it is 5.5:1 (WCAG AA). */
+  --color-brand-600: #0f766e;
+  --color-brand-700: #115e59;
+  --color-brand-800: #134e4a;
+  --color-brand-900: #0b3b38;
+
+  /* Tangerine: warm and appetising for deals. Dark text on 400 is 7.8:1; 700 text on white is 5.2:1. */
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-200: #fed7aa;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-accent-800: #9a3412;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  /* Leaf green: freshness and confirmations. 700 on 50 is 6.8:1; 600 on white is 5.0:1. */
+  --color-success-50: #f7fee7;
+  --color-success-100: #ecfccb;
+  --color-success-200: #d9f99d;
+  --color-success-500: #84cc16;
+  --color-success-600: #4d7c0f;
+  --color-success-700: #3f6212;
 }
 
 :root {
-  --background: #f8fafb;
-  --foreground: #0f172a;
-  --primary: #0d9488;
-  --primary-hover: #0f766e;
+  /* Tinted canvas so white cards stand out from the page. */
+  --background: #f1f5f1;
+  --foreground: #131a16;
+  --primary: #0f766e;
+  --primary-hover: #115e59;
   --sidebar-width: 220px;
   --cart-width: 380px;
   --navbar-height: 64px;
@@ -32,6 +104,11 @@ html, body {
   height: 100%;
 }
 
+/* Reserve the scrollbar space so locking scroll (dialogs, drawers) never shifts the layout */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -39,11 +116,32 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Visible keyboard focus everywhere (mouse clicks don't show it) */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Dialog entrance (components/ui/Dialog.tsx) */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialogIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* Respect users who ask for less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: var(--color-slate-300); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-slate-400); }
 
 /* Smooth transitions */
 .transition-all { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -81,7 +179,7 @@ body {
   100% { background-position: 1000px 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background: linear-gradient(90deg, var(--color-slate-200) 25%, var(--color-slate-100) 50%, var(--color-slate-200) 75%);
   background-size: 1000px 100%;
   animation: shimmer 1.5s infinite linear;
   border-radius: 8px;

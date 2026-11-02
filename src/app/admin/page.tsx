@@ -1,30 +1,49 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { 
-  TrendingUp, 
-  Users, 
-  ShoppingBag, 
-  Package, 
-  Clock, 
-  CheckCircle2, 
+import {
+  TrendingUp,
+  Users,
+  ShoppingBag,
+  Package,
   ArrowUpRight,
   ArrowDownRight,
-  Loader2
+  Loader2,
+  Search,
+  Inbox,
 } from "lucide-react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
   Area
 } from 'recharts';
 import Link from "next/link";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+
+// Recharts needs literal colour values, so these mirror the design tokens in globals.css.
+const CHART_COLORS = {
+  line: "#0f766e", // brand-600
+  grid: "#e2e8f0", // slate-200
+  tick: "#64748b", // slate-500 (readable on white)
+  label: "#0f172a", // slate-900
+};
+
+// Order status → badge colours (tokens only). Unknown statuses fall back to slate.
+const ORDER_STATUS_STYLES: Record<string, string> = {
+  pending: "bg-accent-50 text-accent-800",
+  processing: "bg-slate-100 text-slate-700",
+  shipped: "bg-brand-50 text-brand-700",
+  delivered: "bg-success-50 text-success-700",
+  cancelled: "bg-danger-50 text-danger-700",
+};
+
+/** Card wrapper used by every dashboard panel. */
+const PANEL_CLASS = "bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
@@ -50,194 +69,192 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+      <div className="h-[60vh] flex items-center justify-center" role="status">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+        <span className="sr-only">Loading dashboard…</span>
       </div>
     );
   }
 
   const cards = [
-    { 
-      name: 'Total Sales', 
-      value: `৳${stats?.metrics?.totalSales || 0}`, 
-      icon: TrendingUp, 
-      color: 'text-emerald-600', 
-      bg: 'bg-emerald-50', 
+    {
+      name: 'Total sales',
+      value: `৳${stats?.metrics?.totalSales || 0}`,
+      icon: TrendingUp,
+      iconClass: 'bg-success-50 text-success-700',
       trend: stats?.metrics?.trends?.sales || "0%"
     },
-    { 
-      name: 'Total Orders', 
-      value: stats?.metrics?.totalOrders || 0, 
-      icon: Package, 
-      color: 'text-blue-600', 
-      bg: 'bg-blue-50', 
+    {
+      name: 'Total orders',
+      value: stats?.metrics?.totalOrders || 0,
+      icon: Package,
+      iconClass: 'bg-brand-50 text-brand-700',
       trend: stats?.metrics?.trends?.orders || "0%"
     },
-    { 
-      name: 'Total Users', 
-      value: stats?.metrics?.totalUsers || 0, 
-      icon: Users, 
-      color: 'text-purple-600', 
-      bg: 'bg-purple-50', 
+    {
+      name: 'Total users',
+      value: stats?.metrics?.totalUsers || 0,
+      icon: Users,
+      iconClass: 'bg-slate-100 text-slate-700',
       trend: stats?.metrics?.trends?.users || "0%"
     },
-    { 
-      name: 'Active Inventory', 
-      value: stats?.metrics?.totalProducts || 0, 
-      icon: ShoppingBag, 
-      color: 'text-amber-600', 
-      bg: 'bg-amber-50', 
+    {
+      name: 'Active inventory',
+      value: stats?.metrics?.totalProducts || 0,
+      icon: ShoppingBag,
+      iconClass: 'bg-accent-50 text-accent-700',
       trend: stats?.metrics?.trends?.inventory || "Healthy"
     },
   ];
 
+  const lowStockCount = stats?.lowStockProducts?.length || 0;
+
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 pb-10">
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {cards.map((card, idx) => (
-          <motion.div
-            key={card.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`w-12 h-12 ${card.bg} ${card.color} rounded-2xl flex items-center justify-center`}>
-                <card.icon size={24} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {cards.map((card) => {
+          const isUp = card.trend.includes('+');
+          const isDown = card.trend.includes('-');
+          return (
+            <div key={card.name} className={PANEL_CLASS}>
+              <div className="flex items-center justify-between mb-4">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", card.iconClass)}>
+                  <card.icon size={20} aria-hidden="true" />
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                    isUp ? "bg-success-50 text-success-700" : isDown ? "bg-danger-50 text-danger-700" : "bg-slate-100 text-slate-600"
+                  )}
+                >
+                  {isUp && <ArrowUpRight size={12} aria-hidden="true" />}
+                  {isDown && <ArrowDownRight size={12} aria-hidden="true" />}
+                  {card.trend}
+                </span>
               </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${
-                card.trend.includes('+') ? 'bg-emerald-50 text-emerald-600' : 
-                card.trend.includes('-') ? 'bg-rose-50 text-rose-600' : 
-                'bg-slate-50 text-slate-500'
-              }`}>
-                {card.trend.includes('+') ? <ArrowUpRight size={12} /> : 
-                 card.trend.includes('-') ? <ArrowDownRight size={12} /> : null}
-                {card.trend}
-              </span>
+              <p className="text-sm font-medium text-slate-600">{card.name}</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{card.value}</p>
             </div>
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{card.name}</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">{card.value}</h3>
-          </motion.div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Sales Chart */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="lg:col-span-2 bg-white p-8 rounded-3xl border border-slate-100 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold text-slate-800">Sales Overview</h3>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Last 7 Days
-            </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Sales Chart (no scale animation: Recharts measures its container on mount) */}
+        <section className={cn(PANEL_CLASS, "lg:col-span-2")} aria-labelledby="sales-overview-title">
+          <div className="flex items-center justify-between mb-6">
+            <h2 id="sales-overview-title" className="text-base font-semibold text-slate-900">Sales overview</h2>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              Last 7 days
+            </span>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats?.salesHistory || []}>
+              <AreaChart data={stats?.salesHistory || []} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor={CHART_COLORS.line} stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor={CHART_COLORS.line} stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_COLORS.grid} />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: CHART_COLORS.tick, fontSize: 12 }}
                   dy={10}
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: CHART_COLORS.tick, fontSize: 12 }}
                 />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  labelStyle={{ fontWeight: 'black', color: '#1e293b' }}
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: `1px solid ${CHART_COLORS.grid}`, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: 13 }}
+                  labelStyle={{ fontWeight: 600, color: CHART_COLORS.label }}
                 />
-                <Area type="monotone" dataKey="sales" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                <Area type="monotone" dataKey="sales" stroke={CHART_COLORS.line} strokeWidth={2} fillOpacity={1} fill="url(#colorSales)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </motion.div>
+        </section>
 
         {/* Latest Activity */}
-        <div className="space-y-8">
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm"
-          >
-            <h3 className="text-xl font-bold text-slate-800 mb-6">Recent Orders</h3>
-            <div className="space-y-6">
-              {stats?.latestOrders?.map((order: any) => (
-                <div key={order._id} className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Clock size={18} className="text-slate-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-800 truncate">{order.user?.name || 'Guest User'}</p>
-                    <p className="text-xs text-slate-400">Order #{order._id.slice(-6).toUpperCase()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-slate-800">৳{order.totalAmount}</p>
-                    <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${
-                      order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                    }`}>
-                      {order.status}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Link 
-              href="/admin/orders"
-              className="w-full mt-8 py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-all text-sm block text-center"
-            >
-              View All Transactions
-            </Link>
-          </motion.div>
+        <div className="space-y-6">
+          <section className={PANEL_CLASS} aria-labelledby="recent-orders-title">
+            <h2 id="recent-orders-title" className="text-base font-semibold text-slate-900 mb-4">Recent orders</h2>
+            {stats?.latestOrders?.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {stats.latestOrders.map((order: any) => (
+                  <li key={order._id} className="flex items-center gap-3 py-3 first:pt-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{order.user?.name || 'Guest user'}</p>
+                      <p className="text-xs text-slate-500">Order #{order._id.slice(-6).toUpperCase()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-slate-900 tabular-nums">৳{order.totalAmount}</p>
+                      <span
+                        className={cn(
+                          "mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize",
+                          ORDER_STATUS_STYLES[order.status] || "bg-slate-100 text-slate-700"
+                        )}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex flex-col items-center py-6 text-center">
+                <Inbox size={24} className="text-slate-400 mb-2" aria-hidden="true" />
+                <p className="text-sm text-slate-500">No orders yet.</p>
+              </div>
+            )}
+            <Button href="/admin/orders" variant="secondary" size="sm" fullWidth className="mt-4 h-10">
+              View all orders
+            </Button>
+          </section>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white p-8 rounded-3xl border border-rose-100 shadow-sm shadow-rose-200/20"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-slate-800">Low Stock</h3>
-              <span className="px-2.5 py-1 bg-rose-50 text-rose-600 rounded-full text-xs font-black">
-                {stats?.lowStockProducts?.length || 0} Alerts
+          <section className={PANEL_CLASS} aria-labelledby="low-stock-title">
+            <div className="flex items-center justify-between mb-4">
+              <h2 id="low-stock-title" className="text-base font-semibold text-slate-900">Low stock</h2>
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                  lowStockCount > 0 ? "bg-danger-50 text-danger-700" : "bg-slate-100 text-slate-600"
+                )}
+              >
+                {lowStockCount} {lowStockCount === 1 ? "alert" : "alerts"}
               </span>
             </div>
-            <div className="space-y-6">
-              {stats?.lowStockProducts?.length > 0 ? (
-                stats.lowStockProducts.map((product: any) => (
-                  <div key={product._id} className="flex items-center gap-4">
-                    <div className="relative w-10 h-10 rounded-xl bg-slate-50 overflow-hidden border border-slate-100 flex-shrink-0">
+            {lowStockCount > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {stats.lowStockProducts.map((product: any) => (
+                  <li key={product._id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="relative w-10 h-10 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
                        <img src={product.imageData || (product.images && product.images[0]) || 'https://via.placeholder.com/150'} alt="" className="object-cover w-full h-full" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-800 truncate">{product.name}</p>
-                      <p className="text-xs text-rose-500 font-bold">Only {product.stock} units left</p>
+                      <p className="text-sm font-medium text-slate-900 truncate">{product.name}</p>
+                      <p className="text-xs font-medium text-danger-700">Only {product.stock} left</p>
                     </div>
-                    <Link href={`/admin/products?search=${product.name}`} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-teal-600 transition-all">
-                       <ArrowUpRight size={18} />
+                    <Link
+                      href={`/admin/products?search=${encodeURIComponent(product.name)}`}
+                      aria-label={`Find ${product.name} in products`}
+                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-brand-700 transition-colors"
+                    >
+                      <Search size={18} aria-hidden="true" />
                     </Link>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-400 py-4 text-center">All inventory levels are healthy.</p>
-              )}
-            </div>
-          </motion.div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500 py-4 text-center">All inventory levels are healthy.</p>
+            )}
+          </section>
         </div>
       </div>
     </div>

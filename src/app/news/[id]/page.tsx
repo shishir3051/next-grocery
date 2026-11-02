@@ -1,12 +1,39 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Calendar, Clock, ArrowLeft, User, Share2, Tag } from "lucide-react";
+import { Calendar, Clock, ArrowLeft, ArrowRight, User, Share2, Tag, FileQuestion, Newspaper } from "lucide-react";
 import { IconBrandFacebook, IconBrandTwitter, IconBrandLinkedin } from "@tabler/icons-react";
 import Link from "next/link";
-import Image from "next/image";
 import { useParams } from "next/navigation";
+import Button from "@/components/ui/Button";
+
+const SHARE_TARGETS = [
+  { label: "Share on Facebook", Icon: IconBrandFacebook },
+  { label: "Share on Twitter", Icon: IconBrandTwitter },
+  { label: "Share on LinkedIn", Icon: IconBrandLinkedin },
+  { label: "More sharing options", Icon: Share2 },
+];
+
+const TOPICS = ['Nutrition', 'Health', 'Recipes', 'EcoFriendly', 'Farming'];
+
+/** Cover image with a branded placeholder when missing or broken. */
+function ArticleCover({ src, alt }: { src?: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-brand-50 text-brand-600">
+        <Newspaper size={48} aria-hidden="true" />
+        <span className="text-sm font-semibold text-brand-700">FreshBasket News</span>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- images can be base64 data or any remote host
+    <img src={src} alt={alt} onError={() => setFailed(true)} className="h-full w-full object-cover" />
+  );
+}
 
 export default function ArticlePage() {
   const params = useParams();
@@ -30,10 +57,12 @@ export default function ArticlePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center space-y-4">
-           <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
-           <p className="text-slate-500 font-bold">Unfolding the story...</p>
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14" aria-busy="true" aria-label="Loading article">
+          <div className="skeleton h-4 w-24" />
+          <div className="skeleton mt-6 h-8 w-3/4 max-w-2xl" />
+          <div className="skeleton mt-3 h-4 w-1/3" />
+          <div className="skeleton mt-8 aspect-[16/9] w-full rounded-2xl! sm:aspect-[21/9]" />
         </div>
       </div>
     );
@@ -41,126 +70,126 @@ export default function ArticlePage() {
 
   if (!article) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white p-12 rounded-[3rem] shadow-xl text-center space-y-6 max-w-md mx-4">
-          <div className="text-6xl">🔍</div>
-          <h2 className="text-3xl font-black text-slate-800">Story Not Found</h2>
-          <p className="text-slate-500 font-medium">This article might have been moved or archived. Explore our other fresh news!</p>
-          <Link href="/news" className="inline-flex items-center gap-2 px-8 py-4 bg-teal-600 text-white font-black rounded-2xl shadow-lg hover:bg-teal-700 transition-all">
-            <ArrowLeft size={18} /> Back to News
-          </Link>
+      <div className="flex min-h-[60vh] items-center justify-center bg-slate-50 px-4 py-14">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100">
+            <FileQuestion className="text-slate-400" size={28} aria-hidden="true" />
+          </div>
+          <h1 className="mt-4 text-xl font-bold text-slate-900">Story not found</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            This article might have been moved or archived. Explore our other fresh news.
+          </p>
+          <Button href="/news" className="mt-6">
+            <ArrowLeft size={18} aria-hidden="true" /> Back to news
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Article Header & Image */}
-      <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
-        <img 
-          src={article.imageData || article.image || "https://placehold.co/1200x800/f1f5f9/94a3b8?text=Image+Needed..."} 
-          alt={article.title} 
-          className="absolute inset-0 w-full h-full object-cover shadow-2xl"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
-        
-        <div className="absolute bottom-0 left-0 w-full p-4 pb-20 md:p-12 md:pb-28">
-          <div className="max-w-4xl mx-auto space-y-6">
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2"
-            >
-               <span className="px-4 py-1.5 bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                  {article.category}
-               </span>
-            </motion.div>
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl md:text-6xl font-black text-white leading-tight drop-shadow-2xl"
-            >
-              {article.title}
-            </motion.h1>
-            
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="flex flex-wrap items-center gap-6 text-white text-sm font-black drop-shadow-lg"
-            >
-              <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-                <User size={16} className="text-teal-400" />
-                {article.author || 'FreshBasket Team'}
-              </div>
-              <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-                <Calendar size={16} className="text-teal-400" />
-                {new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </div>
-              <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-                <Clock size={16} className="text-teal-400" />
-                {article.readTime}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-
-      {/* Article Content */}
-      <div className="max-w-7xl mx-auto px-4 mt-[-4rem] relative z-10 flex flex-col lg:flex-row gap-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="lg:w-2/3 bg-white rounded-[3rem] p-8 md:p-16 shadow-2xl shadow-slate-900/10 border border-slate-100"
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+        <Link
+          href="/news"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-700"
         >
-          {/* Excerpt */}
-          <p className="text-xl md:text-2xl font-bold text-slate-800 leading-relaxed italic mb-10 border-l-8 border-teal-500 pl-6 bg-slate-50 py-4 rounded-r-2xl">
-            {article.excerpt}
-          </p>
-          
-          {/* Main Content */}
-          <div 
-            className="prose prose-lg prose-teal max-w-none text-slate-600 font-medium leading-[1.8] space-y-6"
-            dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<br/>') }}
-          />
+          <ArrowLeft size={16} aria-hidden="true" /> All news
+        </Link>
 
-          {/* Social Share */}
-          <div className="mt-16 pt-10 border-t border-slate-50 flex items-center justify-between">
-            <h4 className="font-black text-slate-400 uppercase tracking-widest text-xs">Share this story</h4>
-            <div className="flex items-center gap-3">
-               {[IconBrandFacebook, IconBrandTwitter, IconBrandLinkedin, Share2].map((Icon, i) => (
-                 <button key={i} className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all flex items-center justify-center">
-                   <Icon size={18} />
-                 </button>
-               ))}
+        {/* Article header */}
+        <header className="mt-6 max-w-3xl">
+          {article.category && (
+            <span className="inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+              {article.category}
+            </span>
+          )}
+          <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl">
+            {article.title}
+          </h1>
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <User size={16} aria-hidden="true" />
+              {article.author || 'FreshBasket Team'}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Calendar size={16} aria-hidden="true" />
+              {new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            {article.readTime && (
+              <span className="flex items-center gap-1.5">
+                <Clock size={16} aria-hidden="true" />
+                {article.readTime}
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* Cover image */}
+        <div className="mt-8 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white sm:aspect-[21/9]">
+          <ArticleCover src={article.imageData || article.image} alt={article.title} />
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          {/* Article body */}
+          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10 lg:col-span-2">
+            {article.excerpt && (
+              <p className="border-l-4 border-brand-500 pl-4 text-lg font-medium leading-relaxed text-slate-800">
+                {article.excerpt}
+              </p>
+            )}
+
+            {/* Rendered as text (not HTML) so article content can never inject scripts;
+                whitespace-pre-line keeps the author's line breaks. */}
+            <div className="mt-8 whitespace-pre-line text-base leading-8 text-slate-700">
+              {article.content}
             </div>
-          </div>
-        </motion.div>
 
-        {/* Sidebar */}
-        <div className="lg:w-1/3 space-y-8">
-          <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm sticky top-24">
-             <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                <Tag className="text-teal-500" size={20} /> Fresh Categories
-             </h3>
-             <div className="flex flex-wrap gap-2">
-                {['Nutrition', 'Health', 'Recipes', 'EcoFriendly', 'Farming'].map(cat => (
-                  <span key={cat} className="px-4 py-2 bg-slate-50 text-slate-500 text-xs font-bold rounded-xl hover:bg-teal-50 hover:text-teal-600 cursor-pointer transition-all">
-                    #{cat}
-                  </span>
+            {/* Share (buttons are placeholders until sharing is wired up) */}
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-6">
+              <h2 className="text-sm font-semibold text-slate-700">Share this story</h2>
+              <div className="flex items-center gap-2">
+                {SHARE_TARGETS.map(({ label, Icon }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-label={label}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                  </button>
                 ))}
-             </div>
-             
-             <div className="mt-10 p-6 bg-teal-50 rounded-[2rem] border border-teal-100 space-y-4">
-                <p className="text-teal-800 font-bold text-sm">Want more fresh insights?</p>
-                <Link href="/" className="inline-flex items-center gap-2 text-teal-600 font-black text-xs hover:gap-3 transition-all">
-                   Shop Our Collection <ArrowLeft className="rotate-180" size={14} />
+              </div>
+            </div>
+          </article>
+
+          {/* Sidebar */}
+          <aside className="lg:col-span-1">
+            <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:sticky lg:top-[calc(var(--navbar-height)+1.5rem)]">
+              <div>
+                <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                  <Tag className="text-brand-600" size={18} aria-hidden="true" /> Topics
+                </h2>
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {TOPICS.map(topic => (
+                    <li key={topic} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+                      #{topic}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-brand-100 bg-brand-50 p-5">
+                <p className="text-sm font-semibold text-brand-900">Want more fresh insights?</p>
+                <Link
+                  href="/"
+                  className="mt-1 inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-700 hover:text-brand-800"
+                >
+                  Shop our collection <ArrowRight size={16} aria-hidden="true" />
                 </Link>
-             </div>
-          </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

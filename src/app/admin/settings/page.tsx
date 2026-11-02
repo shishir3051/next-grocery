@@ -2,7 +2,40 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Shield, Bell, Database, Globe, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { Store, Truck, Wrench, Save, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { PANEL_CLASS, LABEL_CLASS, INPUT_CLASS, HELP_CLASS } from "@/components/admin/adminStyles";
+
+/** Titled panel that groups related settings fields. */
+function SettingsSection({
+  id,
+  icon: Icon,
+  title,
+  description,
+  children
+}: {
+  id: string;
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={`${id}-title`} className={PANEL_CLASS}>
+      <div className="flex items-start gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden="true">
+          <Icon size={20} />
+        </div>
+        <div>
+          <h3 id={`${id}-title`} className="text-base font-semibold text-slate-900">{title}</h3>
+          <p className="text-sm text-slate-500">{description}</p>
+        </div>
+      </div>
+      <div className="p-4 sm:p-6">{children}</div>
+    </section>
+  );
+}
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<any>({
@@ -57,130 +90,146 @@ export default function AdminSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+      <div className="h-[60vh] flex items-center justify-center" role="status">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+        <span className="sr-only">Loading settings…</span>
       </div>
     );
   }
 
+  const isMaintenanceOn = Boolean(settings.maintenanceMode);
+
   return (
-    <div className="max-w-4xl space-y-6">
-      <form onSubmit={handleSave} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
-              <SettingsIcon className="text-teal-600 w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-black text-slate-800">Store Settings</h2>
-          </div>
-          {message && (
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2 text-emerald-600 text-sm font-bold bg-emerald-50 px-4 py-2 rounded-xl"
-            >
-              <CheckCircle2 size={16} />
-              {message}
-            </motion.div>
-          )}
-        </div>
-        
-        <div className="p-8 space-y-10">
-          <div className="grid md:grid-cols-2 gap-10">
-            {/* Global Config */}
-            <div className="space-y-6">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Globe size={14} /> Global Configuration
-              </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Store Name</label>
-                  <input 
-                    type="text" 
-                    value={settings.storeName}
-                    onChange={(e) => setSettings({...settings, storeName: e.target.value})}
-                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Support Email</label>
-                  <input 
-                    type="email" 
-                    value={settings.supportEmail}
-                    onChange={(e) => setSettings({...settings, supportEmail: e.target.value})}
-                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none" 
-                  />
-                </div>
-              </div>
-            </div>
+    <form onSubmit={handleSave} className="max-w-3xl space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Store settings</h2>
+        <p className="text-sm text-slate-500">Changes apply to the storefront and checkout after you save.</p>
+      </div>
 
-            {/* Price & Delivery */}
-            <div className="space-y-6">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Shield size={14} /> Price & Delivery
-              </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Delivery Fee (৳)</label>
-                  <input 
-                    type="number" 
-                    value={settings.deliveryFee}
-                    onChange={(e) => setSettings({...settings, deliveryFee: Number(e.target.value)})}
-                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Free Delivery Min (৳)</label>
-                  <input 
-                    type="number" 
-                    value={settings.minFreeDelivery}
-                    onChange={(e) => setSettings({...settings, minFreeDelivery: Number(e.target.value)})}
-                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none" 
-                  />
-                </div>
-              </div>
-            </div>
+      <SettingsSection id="store-details" icon={Store} title="Store details" description="How your store is named and how customers reach you.">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <label htmlFor="settings-store-name" className={LABEL_CLASS}>Store name</label>
+            <input
+              id="settings-store-name"
+              type="text"
+              value={settings.storeName}
+              onChange={(e) => setSettings({...settings, storeName: e.target.value})}
+              className={INPUT_CLASS}
+            />
           </div>
-
-          {/* System Toggles */}
-          <div className="pt-6 border-t border-slate-100">
-             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-6">
-               <Database size={14} /> System Controls
-             </h3>
-             <div className="grid md:grid-cols-2 gap-6">
-                <div 
-                  onClick={() => setSettings({...settings, maintenanceMode: !settings.maintenanceMode})}
-                  className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl cursor-pointer group hover:bg-slate-100 transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${settings.maintenanceMode ? 'bg-amber-100 text-amber-600' : 'bg-white text-slate-400'}`}>
-                      <Database size={20} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">Maintenance Mode</p>
-                      <p className="text-xs text-slate-400">Suspend store operations</p>
-                    </div>
-                  </div>
-                  <div className={`w-12 h-6 rounded-full p-1 transition-all ${settings.maintenanceMode ? 'bg-teal-500' : 'bg-slate-200'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full transition-all ${settings.maintenanceMode ? 'translate-x-6' : 'translate-x-0'}`} />
-                  </div>
-                </div>
-             </div>
+          <div>
+            <label htmlFor="settings-support-email" className={LABEL_CLASS}>Support email</label>
+            <input
+              id="settings-support-email"
+              type="email"
+              value={settings.supportEmail}
+              onChange={(e) => setSettings({...settings, supportEmail: e.target.value})}
+              aria-describedby="settings-support-email-help"
+              className={INPUT_CLASS}
+            />
+            <p id="settings-support-email-help" className={HELP_CLASS}>Where customers send questions about their orders.</p>
           </div>
         </div>
+      </SettingsSection>
 
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end">
-          <button 
-            type="submit"
-            disabled={isSaving}
-            className="px-10 py-4 bg-teal-600 text-white font-black rounded-2xl shadow-xl shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2 disabled:opacity-50"
+      <SettingsSection id="delivery" icon={Truck} title="Delivery" description="Shipping charges added at checkout.">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <label htmlFor="settings-delivery-fee" className={LABEL_CLASS}>Delivery fee (৳)</label>
+            <input
+              id="settings-delivery-fee"
+              type="number"
+              inputMode="numeric"
+              value={settings.deliveryFee}
+              onChange={(e) => setSettings({...settings, deliveryFee: Number(e.target.value)})}
+              aria-describedby="settings-delivery-fee-help"
+              className={cn(INPUT_CLASS, "tabular-nums")}
+            />
+            <p id="settings-delivery-fee-help" className={HELP_CLASS}>Charged on orders below the free delivery minimum.</p>
+          </div>
+          <div>
+            <label htmlFor="settings-free-delivery" className={LABEL_CLASS}>Free delivery minimum (৳)</label>
+            <input
+              id="settings-free-delivery"
+              type="number"
+              inputMode="numeric"
+              value={settings.minFreeDelivery}
+              onChange={(e) => setSettings({...settings, minFreeDelivery: Number(e.target.value)})}
+              aria-describedby="settings-free-delivery-help"
+              className={cn(INPUT_CLASS, "tabular-nums")}
+            />
+            <p id="settings-free-delivery-help" className={HELP_CLASS}>Orders at or above this amount ship free.</p>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection id="maintenance" icon={Wrench} title="Maintenance" description="Temporarily pause the store while you make changes.">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            {/* A <label> on a button forwards clicks, so the text also toggles the switch */}
+            <label htmlFor="settings-maintenance" className="cursor-pointer text-sm font-medium text-slate-800">
+              Maintenance mode
+            </label>
+            <p id="settings-maintenance-help" className="text-sm text-slate-500">
+              Shows a maintenance notice on the storefront and stops new orders.
+            </p>
+          </div>
+          <button
+            id="settings-maintenance"
+            type="button"
+            role="switch"
+            aria-checked={isMaintenanceOn}
+            aria-describedby="settings-maintenance-help"
+            onClick={() => setSettings({...settings, maintenanceMode: !settings.maintenanceMode})}
+            className="flex h-10 w-14 flex-shrink-0 items-center justify-center rounded-full"
           >
-            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
-            Save Changes
+            <span
+              className={cn(
+                "flex h-6 w-11 items-center rounded-full p-0.5 transition-colors",
+                isMaintenanceOn ? "bg-accent-500" : "bg-slate-300"
+              )}
+              aria-hidden="true"
+            >
+              <span
+                className={cn(
+                  "h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                  isMaintenanceOn ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </span>
           </button>
         </div>
-      </form>
-    </div>
+
+        {isMaintenanceOn && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm text-accent-800">
+            <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+            <p>
+              <span className="font-semibold">Maintenance mode is on.</span>{" "}Customers can&apos;t place orders until you switch it off and save.
+            </p>
+          </div>
+        )}
+      </SettingsSection>
+
+      {/* Single save action for every section above */}
+      <div className={cn(PANEL_CLASS, "flex flex-col-reverse items-stretch gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6")}>
+        <div aria-live="polite" role="status" className="sm:mr-auto">
+          {message && (
+            <motion.p
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 text-sm font-medium text-success-700"
+            >
+              <CheckCircle2 size={16} aria-hidden="true" />
+              {message}
+            </motion.p>
+          )}
+        </div>
+        <Button type="submit" loading={isSaving}>
+          {!isSaving && <Save size={16} aria-hidden="true" />}
+          Save changes
+        </Button>
+      </div>
+    </form>
   );
 }
-

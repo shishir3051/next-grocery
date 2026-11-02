@@ -1,8 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Phone, Mail, MapPin, Send, MessageCircle, Clock, Loader2 } from "lucide-react";
+import { Phone, Mail, MapPin, Send, Clock, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import Button from "@/components/ui/Button";
+
+/* Shared form styles (see docs/design/DESIGN_SYSTEM.md, "Inputs") */
+const labelClass = "block text-sm font-medium text-slate-700";
+const inputClass =
+  "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20";
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,143 +26,149 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 py-20">
-        <div className="grid lg:grid-cols-3 gap-12">
-          
-          {/* Contact Information Sidebar */}
-          <div className="lg:col-span-1 space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-black text-slate-800 leading-tight">Get in <span className="text-teal-600">touch.</span></h1>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                Have a question about an order, delivery, or a specific product? We're here to help!
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="grid gap-8 lg:grid-cols-3 lg:gap-12">
+
+          {/* Contact information */}
+          <div className="space-y-8 lg:col-span-1">
+            <header>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Contact</p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Get in touch</h1>
+              <p className="mt-3 text-base text-slate-600">
+                Have a question about an order, delivery, or a specific product? We&apos;re here to help.
               </p>
-            </div>
+            </header>
 
-            <div className="space-y-6 pt-4">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 flex-shrink-0">
-                  <Phone size={20} className="text-teal-600" />
-                </div>
+            <ul className="space-y-5">
+              <li className="flex items-start gap-4">
+                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <Phone size={20} className="text-brand-600" aria-hidden="true" />
+                </span>
                 <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-2">Call center</p>
-                  <p className="text-lg font-black text-slate-800">16469</p>
-                  <p className="text-sm text-slate-500 font-medium">Available 8am - 10pm</p>
+                  <p className="text-xs text-slate-500">Call centre</p>
+                  <a href="tel:16469" className="rounded-lg text-lg font-bold text-slate-900 hover:text-brand-700">16469</a>
+                  <p className="text-sm text-slate-500">Available 8am – 10pm</p>
                 </div>
-              </div>
+              </li>
 
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 flex-shrink-0">
-                  <Mail size={20} className="text-teal-600" />
+              <li className="flex items-start gap-4">
+                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <Mail size={20} className="text-brand-600" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">General inquiries</p>
+                  <a
+                    href="mailto:support@freshbasket.com"
+                    className="break-all rounded-lg text-base font-semibold text-slate-900 hover:text-brand-700"
+                  >
+                    support@freshbasket.com
+                  </a>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-2">General inquiries</p>
-                  <p className="text-lg font-black text-slate-800">support@freshbasket.com</p>
-                </div>
-              </div>
+              </li>
 
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 flex-shrink-0">
-                  <MapPin size={20} className="text-teal-600" />
-                </div>
+              <li className="flex items-start gap-4">
+                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <MapPin size={20} className="text-brand-600" aria-hidden="true" />
+                </span>
                 <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-2">Corporate Office</p>
-                  <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                  <p className="text-xs text-slate-500">Corporate office</p>
+                  <address className="text-sm not-italic leading-relaxed text-slate-700">
                     Level 14, Fresh Tower<br />
                     Plot 22, Road 4, Banani C/A<br />
                     Dhaka 1213, Bangladesh
-                  </p>
+                  </address>
                 </div>
-              </div>
-            </div>
+              </li>
+            </ul>
 
-            <div className="p-6 bg-teal-50 rounded-3xl border border-teal-100 inline-flex items-start gap-3">
-              <Clock size={18} className="text-teal-600 mt-1" />
+            <div className="flex items-start gap-3 rounded-xl border border-brand-100 bg-brand-50 p-4">
+              <Clock size={18} className="mt-0.5 flex-shrink-0 text-brand-700" aria-hidden="true" />
               <div>
-                <p className="text-sm font-bold text-teal-900">Live Support Hours</p>
-                <p className="text-xs font-medium text-teal-600">Everyday: 08:30 AM - 10:30 PM (BST)</p>
+                <p className="text-sm font-semibold text-brand-900">Live support hours</p>
+                <p className="text-sm text-brand-800">Every day: 08:30 AM – 10:30 PM (BST)</p>
               </div>
             </div>
           </div>
 
-          {/* Contact Form */}
+          {/* Contact form (submission is simulated; no backend yet) */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-sm border border-slate-100">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
               {isSent ? (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-12 space-y-6"
+                  className="py-10 text-center"
+                  role="status"
                 >
-                  <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mx-auto">
-                    <Send className="text-teal-600 w-10 h-10" />
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-50">
+                    <CheckCircle2 className="h-8 w-8 text-success-600" aria-hidden="true" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">Message Sent Successfully!</h2>
-                  <p className="text-slate-500 font-medium max-w-sm mx-auto">
+                  <h2 className="mt-4 text-xl font-bold text-slate-900">Message sent</h2>
+                  <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
                     Thank you for reaching out. Our team will get back to you at your email address within the next 2 hours.
                   </p>
-                  <button 
-                    onClick={() => setIsSent(false)}
-                    className="px-8 py-3 text-teal-600 font-bold border border-teal-100 rounded-xl hover:bg-teal-50 transition-all"
-                  >
+                  <Button variant="secondary" onClick={() => setIsSent(false)} className="mt-6">
                     Send another message
-                  </button>
+                  </Button>
                 </motion.div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                      <input 
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <h2 className="text-lg font-semibold text-slate-900">Send us a message</h2>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="contact-name" className={labelClass}>Full name</label>
+                      <input
+                        id="contact-name"
+                        name="name"
                         required
-                        type="text" 
+                        type="text"
+                        autoComplete="name"
                         placeholder="John Doe"
-                        className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none"
+                        className={inputClass}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                      <input 
+                    <div>
+                      <label htmlFor="contact-email" className={labelClass}>Email address</label>
+                      <input
+                        id="contact-email"
+                        name="email"
                         required
-                        type="email" 
+                        type="email"
+                        autoComplete="email"
                         placeholder="john@example.com"
-                        className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none"
+                        className={inputClass}
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Subject</label>
-                    <select className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm appearance-none focus:ring-2 focus:ring-teal-500 transition-all outline-none">
-                      <option>Order Difficulty</option>
-                      <option>Delivery Delay</option>
-                      <option>Product Quality Issue</option>
-                      <option>Account Support</option>
-                      <option>Other / Feedback</option>
+                  <div>
+                    <label htmlFor="contact-subject" className={labelClass}>Subject</label>
+                    <select id="contact-subject" name="subject" className={inputClass}>
+                      <option>Order difficulty</option>
+                      <option>Delivery delay</option>
+                      <option>Product quality issue</option>
+                      <option>Account support</option>
+                      <option>Other / feedback</option>
                     </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Message</label>
-                    <textarea 
+                  <div>
+                    <label htmlFor="contact-message" className={labelClass}>Message</label>
+                    <textarea
+                      id="contact-message"
+                      name="message"
                       required
                       rows={5}
                       placeholder="How can we help you today?"
-                      className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 transition-all outline-none resize-none"
-                    ></textarea>
+                      className={`${inputClass} resize-y`}
+                    />
                   </div>
 
-                  <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-5 bg-teal-600 text-white font-black rounded-2xl shadow-xl hover:bg-teal-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
-                  >
-                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (
-                      <>
-                        <Send size={18} />
-                        Send Message
-                      </>
-                    )}
-                  </button>
+                  <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+                    {!isSubmitting && <Send size={18} aria-hidden="true" />}
+                    {isSubmitting ? "Sending…" : "Send message"}
+                  </Button>
                 </form>
               )}
             </div>

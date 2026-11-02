@@ -1,45 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { 
-  Save, 
-  X, 
-  Image as ImageIcon, 
-  Type, 
-  FileText, 
-  Tag, 
-  Clock,
-  Loader2,
-  AlertCircle
-} from "lucide-react";
+import { useState, useRef } from "react";
+import { Image as ImageIcon, Clock, Upload, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
 import toast from "react-hot-toast";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import {
+  PANEL_CLASS,
+  LABEL_CLASS,
+  INPUT_CLASS,
+  HELP_CLASS,
+  BADGE_CLASS,
+  BADGE_TONES,
+} from "@/components/admin/adminStyles";
 
 interface NewsFormProps {
   initialData?: any;
   isEditing?: boolean;
 }
 
+const CATEGORIES = ["Company News", "Healthy Living", "Tips & Tricks", "Organic Farming", "Recipes"];
+
 export default function NewsForm({ initialData, isEditing = false }: NewsFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  // Visual-only state: highlights the drop zone while a file is dragged over it
+  const [isDragging, setIsDragging] = useState(false);
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     category: initialData?.category || "Company News",
     readTime: initialData?.readTime || "5 min read",
     image: initialData?.image || null,
-    imageData: initialData?.imageData || "", 
+    imageData: initialData?.imageData || "",
     excerpt: initialData?.excerpt || "",
     content: initialData?.content || "",
     isPublished: initialData?.isPublished ?? true
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Shared by the file picker and drag-and-drop: same size check, same state update
+  const processImageFile = (file: File) => {
     // 5MB Limit Check
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image too large! Please keep it under 5MB.");
@@ -48,14 +49,29 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setFormData({ 
-        ...formData, 
+      setFormData({
+        ...formData,
         imageData: reader.result as string,
         image: null // Clear old link when new desktop photo is picked
       });
       toast.success("New image selected!");
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processImageFile(file);
+  };
+
+  const handleImageDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    // The picker only offers images (accept="image/*"); mirror that for dropped files
+    if (!file || !file.type.startsWith("image/")) return;
+    processImageFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,10 +83,10 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
     setLoading(true);
 
     try {
-      const url = isEditing 
-        ? `/api/news/admin/${initialData._id}` 
+      const url = isEditing
+        ? `/api/news/admin/${initialData._id}`
         : "/api/news/admin";
-      
+
       const res = await fetch(url, {
         method: isEditing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,172 +102,223 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
         toast.error(error.error || "Something went wrong");
       }
     } catch (error) {
+      console.error("Save story error:", error);
       toast.error("Failed to save story");
     } finally {
       setLoading(false);
     }
   };
 
+  const previewSrc = formData.imageData || initialData?.image;
+  const submitLabel = isEditing ? "Save changes" : formData.isPublished ? "Publish story" : "Save draft";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Main Editor Section */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                <Type size={14} className="text-teal-500" /> Story Title
-              </label>
-              <input 
-                required
-                type="text" 
-                placeholder="Enter a catchy title..."
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-teal-500/10 transition-all font-bold text-slate-800 text-lg"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-            </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Content fields (left, wide) */}
+        <section aria-labelledby="news-content-title" className={cn(PANEL_CLASS, "space-y-5 p-4 sm:p-6 lg:col-span-2")}>
+          <h3 id="news-content-title" className="text-base font-semibold text-slate-900">Content</h3>
 
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                <FileText size={14} className="text-teal-500" /> Excerpt
-              </label>
-              <textarea 
-                required
-                rows={3}
-                placeholder="A short summary to hook your readers..."
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-teal-500/10 transition-all font-medium text-slate-600 resize-none"
-                value={formData.excerpt}
-                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                <FileText size={14} className="text-teal-500" /> Full Story Content
-              </label>
-              <textarea 
-                required
-                rows={12}
-                placeholder="Write your story here... (Plain text, use line breaks for paragraphs)"
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-teal-500/10 transition-all font-medium text-slate-600"
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              />
-            </div>
+          <div>
+            <label htmlFor="news-title" className={LABEL_CLASS}>Title</label>
+            <input
+              id="news-title"
+              required
+              type="text"
+              placeholder="e.g. 10 superfoods to boost your immunity"
+              className={cn(INPUT_CLASS, "text-base font-medium")}
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
           </div>
-        </div>
 
-        {/* Sidebar Settings Section */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-6">
-            <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
-               Settings
-            </h3>
-            
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
-              <select 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 font-bold text-slate-700"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              >
-                <option>Company News</option>
-                <option>Healthy Living</option>
-                <option>Tips & Tricks</option>
-                <option>Organic Farming</option>
-                <option>Recipes</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Read Time</label>
-              <div className="relative">
-                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input 
-                  type="text" 
-                  placeholder="e.g. 5 min read"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 font-bold text-slate-700 text-sm"
-                  value={formData.readTime}
-                  onChange={(e) => setFormData({ ...formData, readTime: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Article Image</label>
-              
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className="group relative h-48 rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 hover:border-teal-500 hover:bg-teal-50/30 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center p-4"
-              >
-                {(formData.imageData || initialData?.image) ? (
-                  <img 
-                    src={formData.imageData || initialData?.image} 
-                    alt="Preview" 
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                  />
-                ) : (
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm text-slate-400 group-hover:text-teal-500 transition-colors">
-                      <ImageIcon size={24} />
-                    </div>
-                    <p className="text-xs font-black text-slate-400 group-hover:text-teal-600">Select Story Photo</p>
-                    <p className="text-[10px] text-slate-300">Max size: 5MB</p>
-                  </div>
-                )}
-                
-                {/* Overlay for change */}
-                {(formData.imageData || initialData?.image) && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                     <p className="text-white text-xs font-black flex items-center gap-2">
-                       <ImageIcon size={16} /> Change Photo
-                     </p>
-                  </div>
-                )}
-              </div>
-
-              <input 
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-            </div>
-
-            <div className="pt-4 border-t border-slate-50">
-               <label className="flex items-center gap-3 cursor-pointer group">
-                  <div 
-                    onClick={() => setFormData({ ...formData, isPublished: !formData.isPublished })}
-                    className={`w-12 h-6 rounded-full transition-all relative ${formData.isPublished ? 'bg-teal-500' : 'bg-slate-200'}`}
-                  >
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isPublished ? 'left-7' : 'left-1'}`} />
-                  </div>
-                  <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors">Publish Story</span>
-               </label>
+          <div>
+            <label htmlFor="news-excerpt" className={LABEL_CLASS}>Excerpt</label>
+            <textarea
+              id="news-excerpt"
+              required
+              rows={3}
+              placeholder="A short summary to hook your readers"
+              aria-describedby="news-excerpt-help"
+              className={cn(INPUT_CLASS, "resize-none")}
+              value={formData.excerpt}
+              onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+            />
+            <div id="news-excerpt-help" className={cn(HELP_CLASS, "flex justify-between gap-4")}>
+              <span>Shown on the news list and story cards. One or two sentences work best.</span>
+              <span className="whitespace-nowrap tabular-nums">{formData.excerpt.length} characters</span>
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex flex-col gap-3 pt-4">
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full bg-teal-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-teal-900/10 hover:bg-teal-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+          <div>
+            <label htmlFor="news-content" className={LABEL_CLASS}>Story content</label>
+            <textarea
+              id="news-content"
+              required
+              rows={14}
+              placeholder="Write your story here"
+              aria-describedby="news-content-help"
+              className={cn(INPUT_CLASS, "min-h-64 leading-relaxed")}
+              value={formData.content}
+              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            />
+            <p id="news-content-help" className={HELP_CLASS}>
+              Plain text. Leave a blank line between paragraphs.
+            </p>
+          </div>
+        </section>
+
+        {/* Meta + image (right) */}
+        <section aria-labelledby="news-details-title" className={cn(PANEL_CLASS, "h-fit space-y-5 p-4 sm:p-6")}>
+          <h3 id="news-details-title" className="text-base font-semibold text-slate-900">Details</h3>
+
+          <div>
+            <label htmlFor="news-category" className={LABEL_CLASS}>Category</label>
+            <select
+              id="news-category"
+              className={INPUT_CLASS}
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              {isEditing ? "Update Story" : "Publish Now"}
-            </button>
-            <button 
+              {CATEGORIES.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="news-read-time" className={LABEL_CLASS}>Read time</label>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input
+                id="news-read-time"
+                type="text"
+                placeholder="e.g. 5 min read"
+                className={cn(INPUT_CLASS, "pl-10")}
+                value={formData.readTime}
+                onChange={(e) => setFormData({ ...formData, readTime: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            {/* Clicking the label also opens the picker; the button below is the keyboard path */}
+            <label htmlFor="news-image" className={LABEL_CLASS}>Cover image</label>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleImageDrop}
+              className={cn(
+                "overflow-hidden rounded-xl border-2 border-dashed transition-colors",
+                isDragging ? "border-brand-500 bg-brand-50" : "border-slate-300 bg-slate-50"
+              )}
+            >
+              {/* Mouse shortcut kept from the original: clicking the preview area opens the picker.
+                  Keyboard and screen-reader users use the "Choose image" button below. */}
+              {previewSrc ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative aspect-video w-full cursor-pointer bg-slate-100"
+                >
+                  {/* Plain <img>: the preview is a base64 data URL or an arbitrary host next/image is not configured for */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={previewSrc} alt="Cover image preview" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex cursor-pointer flex-col items-center px-4 py-8 text-center"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm">
+                    <ImageIcon size={22} aria-hidden="true" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-slate-700">Drag an image here</p>
+                  <p className="text-xs text-slate-500">or choose a file from your computer</p>
+                </div>
+              )}
+
+              <div className={cn("flex justify-center p-3", previewSrc && "border-t border-slate-200 bg-white")}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-describedby="news-image-help"
+                  className="h-10"
+                >
+                  <Upload size={16} aria-hidden="true" />
+                  {previewSrc ? "Replace image" : "Choose image"}
+                </Button>
+              </div>
+            </div>
+            <p id="news-image-help" className={HELP_CLASS}>Required. Any image file (PNG, JPG, WEBP…), up to 5 MB.</p>
+
+            <input
+              id="news-image"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              tabIndex={-1}
+              className="sr-only"
+              onChange={handleImageUpload}
+            />
+          </div>
+
+          {/* Publish switch: a real button so it works with the keyboard; the label toggles it too */}
+          <div className="flex items-start justify-between gap-4 border-t border-slate-200 pt-5">
+            <div>
+              <label htmlFor="news-published" className="block cursor-pointer text-sm font-medium text-slate-700">
+                Published
+              </label>
+              <p id="news-published-help" className="mt-0.5 text-xs text-slate-500">
+                {formData.isPublished ? "Visible on the storefront news page." : "Saved as a draft, hidden from customers."}
+              </p>
+            </div>
+            <button
+              id="news-published"
               type="button"
-              onClick={() => router.push("/admin/news")}
-              className="w-full bg-white text-slate-500 py-4 rounded-2xl font-black border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+              role="switch"
+              aria-checked={formData.isPublished}
+              aria-describedby="news-published-help"
+              onClick={() => setFormData({ ...formData, isPublished: !formData.isPublished })}
+              className="flex h-10 flex-shrink-0 items-center"
             >
-              <X size={20} />
-              Cancel
+              <span
+                className={cn(
+                  "relative h-6 w-11 rounded-full transition-colors",
+                  formData.isPublished ? "bg-brand-600" : "bg-slate-300"
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all",
+                    formData.isPublished ? "left-6" : "left-1"
+                  )}
+                />
+              </span>
             </button>
           </div>
+        </section>
+      </div>
+
+      {/* Sticky action bar: stays in reach while scrolling through long content */}
+      {/* One row on phones too, so the bar never covers much of the form; the status badge
+          is hidden below sm because the Published switch already shows the state there */}
+      <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-md backdrop-blur">
+        <span className={cn(BADGE_CLASS, formData.isPublished ? BADGE_TONES.success : BADGE_TONES.neutral, "hidden sm:inline-flex")}>
+          <span
+            className={cn("h-1.5 w-1.5 rounded-full", formData.isPublished ? "bg-success-500" : "bg-slate-400")}
+            aria-hidden="true"
+          />
+          {formData.isPublished ? "Published" : "Draft"}
+        </span>
+        <div className="flex flex-1 gap-3 sm:flex-none">
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => router.push("/admin/news")}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={loading} className="flex-1 whitespace-nowrap sm:flex-none">
+            {!loading && <Save size={16} aria-hidden="true" />}
+            {submitLabel}
+          </Button>
         </div>
       </div>
     </form>

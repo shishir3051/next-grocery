@@ -1,31 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Truck, 
-  MapPin, 
-  Phone, 
-  CheckCircle2, 
-  CreditCard, 
-  ChevronRight,
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  Truck,
+  MapPin,
+  Phone,
+  CheckCircle2,
   Package,
-  Calendar,
   Loader2,
   LogOut,
   Navigation,
-  DollarSign
+  RefreshCw
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import toast from "react-hot-toast";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 export default function DeliveryDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -74,8 +73,9 @@ export default function DeliveryDashboard() {
 
   if (isLoading || status === "loading") {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+      <div className="h-screen flex items-center justify-center bg-slate-50" role="status">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
+        <span className="sr-only">Loading your deliveries…</span>
       </div>
     );
   }
@@ -83,115 +83,126 @@ export default function DeliveryDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <div className="bg-white px-6 py-8 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800">My Deliveries</h1>
-            <p className="text-teal-600 font-bold text-xs uppercase tracking-widest mt-1">
-              Active Specialist: {session?.user?.name}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">My deliveries</h1>
+            <p className="text-sm text-slate-600 mt-0.5 truncate">
+              Signed in as <span className="font-medium text-slate-800">{session?.user?.name}</span>
             </p>
           </div>
-          <button 
-            onClick={() => signOut()}
-            className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
-          >
-            <LogOut size={20} />
-          </button>
+          <Button variant="secondary" size="sm" onClick={() => signOut()} className="h-10 flex-shrink-0">
+            <LogOut size={16} aria-hidden="true" /> Sign out
+          </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="p-6 space-y-6 max-w-2xl mx-auto">
+      <main className="px-4 sm:px-6 py-6 space-y-4 max-w-2xl mx-auto">
         {orders.length === 0 ? (
-          <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-20 h-20 bg-white rounded-[2.5rem] flex items-center justify-center shadow-xl shadow-teal-900/5">
-              <Package size={40} className="text-slate-200" />
+          <div className="h-[60vh] flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">
+              <Package size={28} className="text-slate-400" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-slate-800 font-black">All Tasks Completed!</p>
-              <p className="text-slate-400 text-sm font-bold">Waiting for new assignments...</p>
+              <p className="text-base font-semibold text-slate-900">All caught up</p>
+              <p className="text-sm text-slate-500 mt-1">New delivery assignments will appear here.</p>
             </div>
-            <button 
-              onClick={fetchMyOrders}
-              className="px-6 py-3 bg-white border border-slate-200 text-teal-600 font-black rounded-2xl text-xs uppercase tracking-widest hover:border-teal-300"
-            >
-              Refresh Tasks
-            </button>
+            <Button variant="secondary" onClick={fetchMyOrders}>
+              <RefreshCw size={16} aria-hidden="true" /> Refresh tasks
+            </Button>
           </div>
         ) : (
-          orders.map((order, idx) => (
-            <motion.div
-              key={order._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm"
-            >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600">
-                    <Truck size={20} />
+          <>
+            <p className="text-sm text-slate-600">
+              {orders.length} active {orders.length === 1 ? "delivery" : "deliveries"}
+            </p>
+            {orders.map((order, idx) => (
+              <motion.article
+                key={order._id}
+                // y-only entrance so cards are never invisible; skipped for reduced motion
+                initial={prefersReducedMotion ? false : { y: 12 }}
+                animate={{ y: 0 }}
+                transition={{ delay: Math.min(idx * 0.05, 0.3) }}
+                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
+                aria-labelledby={`delivery-${order._id}-title`}
+              >
+                <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-brand-700 flex-shrink-0">
+                      <Truck size={20} aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 id={`delivery-${order._id}-title`} className="text-sm font-semibold text-slate-900">
+                        Order #{order._id.slice(-8).toUpperCase()}
+                      </h2>
+                      <p className="text-xs text-slate-500 tabular-nums">
+                        {order.items.length} {order.items.length === 1 ? "item" : "items"} · ৳{order.totalAmount}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-black text-slate-800">Order #{order._id.slice(-8).toUpperCase()}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                      {order.items.length} Items • ৳{order.totalAmount}
-                    </p>
-                  </div>
-                </div>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                    order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                }`}>
-                  {order.paymentStatus}
-                </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                {/* Customer Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Customer</p>
-                    <p className="text-sm font-bold text-slate-700">{order.user?.name}</p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Phone</p>
-                    <a href={`tel:${order.shippingAddress?.phone}`} className="text-sm font-black text-teal-600 flex items-center justify-end gap-1">
-                      <Phone size={14} /> {order.shippingAddress?.phone}
-                    </a>
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2">Delivery Address</p>
-                  <div className="flex items-start gap-3">
-                    <MapPin size={18} className="text-teal-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed">
-                      {order.shippingAddress?.street}, {order.shippingAddress?.city}
-                    </p>
-                  </div>
-                  <a 
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.shippingAddress?.street + ', ' + order.shippingAddress?.city)}`}
-                    target="_blank"
-                    className="mt-4 w-full py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center justify-center gap-2 hover:bg-teal-600 hover:text-white hover:border-teal-600 transition-all shadow-sm"
+                  <span
+                    className={cn(
+                      "flex-shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
+                      order.paymentStatus === 'paid'
+                        ? 'bg-success-50 text-success-700 border-success-100'
+                        : 'bg-accent-50 text-accent-800 border-accent-200'
+                    )}
                   >
-                    <Navigation size={12} /> Open in Navigation
-                  </a>
+                    {order.paymentStatus}
+                  </span>
                 </div>
 
-                {/* Actions */}
-                <div className="pt-2">
-                  <button 
-                    onClick={() => updateOrder(order._id, { status: 'delivered' })}
-                    className="w-full py-4 bg-teal-600 text-white rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2 transition-all hover:bg-teal-700"
-                  >
-                    <CheckCircle2 size={14} /> Finish Delivery
-                  </button>
+                <div className="p-4 sm:p-6 space-y-5">
+                  {/* Customer Info */}
+                  <dl className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1 min-w-0">
+                      <dt className="text-xs font-medium text-slate-500">Customer</dt>
+                      <dd className="text-sm font-medium text-slate-900 truncate">{order.user?.name}</dd>
+                    </div>
+                    <div className="space-y-1 text-right min-w-0">
+                      <dt className="text-xs font-medium text-slate-500">Phone</dt>
+                      <dd>
+                        <a
+                          href={`tel:${order.shippingAddress?.phone}`}
+                          className="inline-flex min-h-10 items-center justify-end gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800 hover:underline"
+                        >
+                          <Phone size={14} aria-hidden="true" /> {order.shippingAddress?.phone}
+                        </a>
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {/* Address */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <p className="text-xs font-medium text-slate-500 mb-2">Delivery address</p>
+                    <div className="flex items-start gap-2.5">
+                      <MapPin size={18} className="text-brand-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                      <p className="text-sm text-slate-800 leading-relaxed">
+                        {order.shippingAddress?.street}, {order.shippingAddress?.city}
+                      </p>
+                    </div>
+                    <Button
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.shippingAddress?.street + ', ' + order.shippingAddress?.city)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="secondary"
+                      fullWidth
+                      className="mt-3"
+                    >
+                      <Navigation size={16} aria-hidden="true" /> Open in Maps
+                    </Button>
+                  </div>
+
+                  {/* Actions */}
+                  <Button size="lg" fullWidth onClick={() => updateOrder(order._id, { status: 'delivered' })}>
+                    <CheckCircle2 size={18} aria-hidden="true" /> Mark as delivered
+                  </Button>
                 </div>
-              </div>
-            </motion.div>
-          ))
+              </motion.article>
+            ))}
+          </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
