@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Coupon } from "@/models/Coupon";
+import { computeCouponDiscount } from "@/lib/orders";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const { code, subtotal } = await request.json();
 
-    if (!code || typeof subtotal !== 'number') {
+    if (typeof code !== 'string' || !code || typeof subtotal !== 'number') {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
     const coupon = await Coupon.findOne({ 
       code: code.toUpperCase(), 
       isActive: true,
+      startDate: { $lte: new Date() },
       expiryDate: { $gte: new Date() }
     });
 
@@ -40,15 +42,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ isValid: false, message: "Coupon usage limit reached" });
     }
 
-    let discountAmount = 0;
-    if (coupon.discountType === 'percentage') {
-      discountAmount = (subtotal * coupon.discountValue) / 100;
-      if (coupon.maxDiscount) {
-        discountAmount = Math.min(discountAmount, coupon.maxDiscount);
-      }
-    } else {
-      discountAmount = coupon.discountValue;
-    }
+    // Same calculation the order routes use, so the preview always matches the charge.
+    const discountAmount = computeCouponDiscount(coupon, subtotal);
 
     return NextResponse.json({ 
       isValid: true, 

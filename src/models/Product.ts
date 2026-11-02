@@ -27,4 +27,9 @@ const ProductSchema = new Schema({
   reviewsCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
+// Indexes to improve query performance on Products and Dashboard
+ProductSchema.index({ category: 1 });
+ProductSchema.index({ stock: 1 });
+ProductSchema.index({ name: 'text', description: 'text' });
+
 export const Product = models.Product || model('Product', ProductSchema);

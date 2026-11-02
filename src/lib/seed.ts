@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Product, Category } from '@/models/Product';
 import { HeroSlide } from '@/models/HeroSlide';
+import { News } from '@/models/News';
 import dbConnect from '@/lib/mongodb';
 import { getBase64FromUrl } from '@/lib/imageUtils';
 
@@ -168,6 +169,8 @@ export async function seed() {
     await Product.deleteMany({});
     await HeroSlide.deleteMany({});
     await HeroSlide.insertMany(heroSlides);
+    // Sample news is only added to an empty collection, so admin-written articles are never wiped.
+    if ((await News.countDocuments()) === 0) await News.insertMany(newsArticles);
     
     const categoryMap = new Map();
     for (const cat of categories) {

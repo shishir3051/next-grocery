@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/authGuard";
 import dbConnect from '@/lib/mongodb';
 import { News } from '@/models/News';
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || (session.user as any).role !== 'admin') {
+  if (!(await requireAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

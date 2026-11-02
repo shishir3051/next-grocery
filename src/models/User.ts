@@ -15,9 +15,21 @@ const UserSchema = new Schema({
   isVerified: { type: Boolean, default: false },
   verificationOtp: { type: String, default: null },
   otpExpiry: { type: Date, default: null },
+  otpAttempts: { type: Number, default: 0 }, // failed guesses for the current OTP
+
+  // Password reset ("Forgot password?"), separate from email verification
+  resetOtp: { type: String, default: null }, // keyed hash of the code, never the code itself
+  resetOtpExpiry: { type: Date, default: null },
+  resetOtpAttempts: { type: Number, default: 0 }, // wrong guesses for the current code
+  // Rolling per-account limits (see RESET_* in lib/otp.ts)
+  resetWindowStart: { type: Date, default: null },
+  resetCodesSent: { type: Number, default: 0 },
+  resetFailures: { type: Number, default: 0 },
+  // Sessions issued before this moment are rejected (see lib/auth.ts)
+  passwordChangedAt: { type: Date, default: null },
   
   // Wallet & Referral System
-  walletBalance: { type: Number, default: 0 },
+  walletBalance: { type: Number, default: 0, min: 0 },
   referralCode: { type: String, unique: true, sparse: true },
   referredBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   referralRewarded: { type: Boolean, default: false }

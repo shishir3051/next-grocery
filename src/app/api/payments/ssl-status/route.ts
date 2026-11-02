@@ -1,48 +1,105 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
+import { Coupon } from "@/models/Coupon";
+import { Product } from "@/models/Product";
+import { validateSslPayment } from "@/lib/sslcommerz";
+import { reserveStock, releaseCoupon } from "@/lib/orders";
 
+/**
+ * SSLCommerz callback for success / fail / cancel redirects and the IPN.
+ *
+ * Nothing in this request is trusted: an order is marked paid only after the
+ * SSLCommerz validation API confirms the `val_id`, and the confirmed
+ * transaction id, amount and currency match the order we created.
+ * The coupon was already reserved in ssl-init; it is released on fail/cancel.
+ */
 export async function POST(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status');
-    const orderId = searchParams.get('orderId');
+  const status = request.nextUrl.searchParams.get('status');
+  const origin = request.nextUrl.origin;
+  const isIpn = status === 'ipn';
 
+  const respond = (paid: boolean) => {
+    if (isIpn) return NextResponse.json({ received: true, paid });
+    return paid
+      ? NextResponse.redirect(new URL(`/orders?session=success`, origin), 303)
+      : NextResponse.redirect(new URL(`/checkout?status=${status === 'cancel' ? 'cancel' : 'fail'}`, origin), 303);
+  };
+
+  try {
     // SSLCommerz sends data in form-data/urlencoded format
     const formData = await request.formData();
-    const tran_id = formData.get('tran_id');
-    const ssl_status = formData.get('status');
-
     await dbConnect();
 
-    if (status === 'success' && ssl_status === 'VALID') {
-      // 1. Fetch the order to get items
-      const order = await Order.findById(orderId);
-      if (order && order.paymentStatus !== 'paid') {
-        // 2. Decrement Stock for each item
-        for (const item of order.items) {
-          await Product.findByIdAndUpdate(item.productId, {
-            $inc: { stock: -item.quantity }
-          });
-        }
+    if (status === 'fail' || status === 'cancel') {
+      await cancelUnpaidOrder(formData.get('tran_id'));
+      return respond(false);
+    }
+    if (status !== 'success' && !isIpn) return respond(false);
 
-        // 3. Update order status to paid
-        order.paymentStatus = 'paid';
-        order.paidAt = new Date();
-        order.status = 'processing';
-        await order.save();
-      }
-      
-      // Redirect to a success page (GET)
-      return NextResponse.redirect(new URL(`/orders?session=success`, request.nextUrl.origin), 303);
-    } 
-    
-    // For fail or cancel, redirect back to checkout with error
-    return NextResponse.redirect(new URL(`/checkout?status=${status}`, request.nextUrl.origin), 303);
+    const valId = formData.get('val_id');
+    if (typeof valId !== 'string' || !valId) return respond(false);
 
+    const payment = await validateSslPayment(valId);
+    if (!payment) return respond(false);
+
+    const order = await Order.findOne({ paymentProvider: 'sslcommerz', paymentProviderId: payment.tranId });
+    if (!order) return respond(false);
+    if (order.paymentStatus === 'paid') return respond(true); // success redirect + IPN both arrive
+
+    const amountMatches = Math.abs(payment.amount - order.totalAmount) < 0.01 && payment.currency === 'BDT';
+    if (!amountMatches) {
+      console.error(`SSLCommerz amount mismatch for order ${order._id}: paid ${payment.amount} ${payment.currency}, expected ${order.totalAmount} BDT`);
+      return respond(false);
+    }
+
+    // Atomic transition so the redirect and the IPN can't both apply side effects.
+    const paidOrder = await Order.findOneAndUpdate(
+      { _id: order._id, paymentStatus: 'unpaid', status: 'pending' },
+      { $set: { paymentStatus: 'paid', paidAt: new Date(), status: 'processing' } },
+      { new: true }
+    );
+
+    if (!paidOrder) {
+      // Money arrived for an order that was cancelled in the meantime: record the payment
+      // but don't resurrect the order; it needs a refund.
+      const recorded = await Order.findOneAndUpdate(
+        { _id: order._id, paymentStatus: 'unpaid', status: 'cancelled' },
+        { $set: { paymentStatus: 'paid', paidAt: new Date() } }
+      );
+      if (recorded) console.error(`Order ${order._id} was paid after being cancelled; refund required`);
+      return respond(true);
+    }
+
+    const items = paidOrder.items.map((i: { productId: unknown; quantity: number }) => ({ productId: String(i.productId), quantity: i.quantity }));
+    if (!(await reserveStock(items))) {
+      // Money is already captured, so keep the order, record the stock as owed
+      // (it may go negative) and flag it for manual review.
+      console.error(`Order ${paidOrder._id} was paid but stock ran out; needs manual review`);
+      await Promise.all(items.map((i: { productId: string; quantity: number }) =>
+        Product.updateOne({ _id: i.productId }, { $inc: { stock: -i.quantity } })
+      ));
+    }
+
+    return respond(true);
   } catch (error) {
     console.error("SSL Status Error:", error);
-    return NextResponse.redirect(new URL(`/checkout?status=error`, request.nextUrl.origin), 303);
+    if (isIpn) return NextResponse.json({ received: false }, { status: 500 });
+    // The payment may still be fine (e.g. the validation API timed out); the IPN will
+    // settle it, so send the customer to their orders rather than back to checkout.
+    return NextResponse.redirect(new URL(status === 'success' ? `/orders?session=pending` : `/checkout?status=error`, origin), 303);
+  }
+}
+
+/** Cancels the provisional order for a failed/cancelled payment and frees its coupon. */
+async function cancelUnpaidOrder(tranId: FormDataEntryValue | null) {
+  if (typeof tranId !== 'string' || !tranId) return;
+  const cancelled = await Order.findOneAndUpdate(
+    { paymentProvider: 'sslcommerz', paymentProviderId: tranId, paymentStatus: 'unpaid', status: 'pending' },
+    { $set: { status: 'cancelled' } }
+  );
+  if (cancelled?.couponCode) {
+    const coupon = await Coupon.findOne({ code: cancelled.couponCode }).select('_id').lean<{ _id: unknown }>();
+    if (coupon) await releaseCoupon(String(coupon._id));
   }
 }

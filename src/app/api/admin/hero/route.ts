@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { HeroSlide } from "@/models/HeroSlide";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  return session?.user && (session.user as any).role === 'admin';
-}
+import { requireAdmin as isAdmin } from "@/lib/authGuard";
 
 export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
