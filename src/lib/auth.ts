@@ -4,6 +4,9 @@ import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import type { NextAuthOptions } from "next-auth";
 
+/** How often a signed-in session is re-validated against the database. */
+const SESSION_RECHECK_MS = 60 * 1000;
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -47,16 +50,36 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }: { token: any; user: any; trigger?: string; session?: any }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.authTime = Date.now();
+        token.checkedAt = Date.now();
         // Intentionally omitting user.image from token.picture here
         // to avoid crashing HTTP headers with massive 2MB base64 cookies!
+        return token;
+      }
+
+      // Re-check the account at most once a minute: a session must end when the password
+      // is reset (e.g. a stolen cookie) or the account is deleted, and a role change
+      // should take effect without logging out. Throwing here makes NextAuth clear the
+      // session cookie, so the user is treated as signed out.
+      if (!token.checkedAt || Date.now() - token.checkedAt > SESSION_RECHECK_MS) {
+        await dbConnect();
+        const account = await User.findById(token.id)
+          .select("role passwordChangedAt")
+          .lean<{ role: string; passwordChangedAt?: Date | null }>();
+        if (!account) throw new Error("Session revoked: account no longer exists");
+        if (account.passwordChangedAt && new Date(account.passwordChangedAt).getTime() > (token.authTime ?? 0)) {
+          throw new Error("Session revoked: password was changed");
+        }
+        token.role = account.role;
+        token.checkedAt = Date.now();
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
