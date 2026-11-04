@@ -23,7 +23,8 @@ FreshBasket is a premium, high-performance e-commerce solution built with **Next
 
 - **Framework**: Next.js 16 (App Router + Server Components)
 - **Database**: MongoDB with Mongoose ODM
-- **Authentication**: NextAuth.js (credentials, email verification, password reset)
+- **Authentication**: NextAuth.js (email + password with verification and reset, optional Google sign-in)
+- **Customer support**: contact form with an admin inbox and email replies
 - **Payments**: Cash on delivery, wallet credit, SSLCommerz
 - **Styling**: Tailwind CSS 4
 - **Animations**: Framer Motion

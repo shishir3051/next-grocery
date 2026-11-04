@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import AuthShell, { AuthNotice, AUTH_INPUT_CLASS, RESET_EMAIL_KEY } from "@/components/auth/AuthShell";
+import GoogleSignInButton, { GOOGLE_ERRORS } from "@/components/auth/GoogleSignInButton";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,12 +17,18 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // After a password reset the reset page sends the user here with ?reset=success
+  // After a password reset the reset page sends the user here with ?reset=success;
+  // a failed Google sign-in comes back with ?error=<code>.
+  // Read once on mount: window.location isn't available during server rendering, and
+  // useSearchParams would force a Suspense boundary around the whole page.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("reset") === "success") {
-       
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset") === "success") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of the URL on mount
       setNotice("Your password has been reset. Log in with your new password.");
     }
+    const oauthError = params.get("error");
+    if (oauthError) setError(GOOGLE_ERRORS[oauthError] ?? "Sign-in failed. Please try again.");
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +45,8 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Invalid email or password");
+        // Show the server's message for lockouts and unverified accounts; otherwise generic.
+        setError(/too many|verify your email/i.test(res.error) ? res.error : "Invalid email or password");
       } else {
         const session = await getSession();
         if (session?.user?.role === 'admin') {
@@ -73,6 +81,8 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {notice && <AuthNotice tone="success">{notice}</AuthNotice>}
         {error && <AuthNotice tone="error">{error}</AuthNotice>}
+
+        <GoogleSignInButton />
 
         <div className="space-y-1.5">
           <label htmlFor="login-email" className="block text-sm font-medium text-slate-700">

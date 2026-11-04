@@ -1,9 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Phone, Mail, MapPin, Send, Clock, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { Phone, Mail, MapPin, Send, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import Button from "@/components/ui/Button";
+
+const SUBJECTS = ["Order difficulty", "Delivery delay", "Product quality issue", "Account support", "Other / feedback"];
+const MAX_MESSAGE = 3000;
+const EMPTY_FORM = { name: "", email: "", phone: "", subject: SUBJECTS[0], orderRef: "", message: "", website: "" };
 
 /* Shared form styles (see docs/design/DESIGN_SYSTEM.md, "Inputs") */
 const labelClass = "block text-sm font-medium text-slate-700";
@@ -11,17 +16,52 @@ const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20";
 
 export default function ContactPage() {
+  const { data: session } = useSession();
+  const [form, setForm] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSent, setIsSent] = useState(false);
+  const [sentReference, setSentReference] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // The error banner sits at the top of the form; bring it into view when it appears.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
+
+  // Signed-in customers don't have to type their name and email: until they edit a
+  // field, it shows their account details.
+  const [edited, setEdited] = useState({ name: false, email: false });
+  const values = {
+    ...form,
+    name: edited.name ? form.name : form.name || session?.user?.name || "",
+    email: edited.email ? form.email : form.email || session?.user?.email || "",
+  };
+
+  const update = (field: keyof typeof EMPTY_FORM) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      if (field === "name" || field === "email") setEdited(s => ({ ...s, [field]: true }));
+      setForm(f => ({ ...f, [field]: e.target.value }));
+    };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "We couldn't send your message. Please try again.");
+      setSentReference(data.reference);
+      setForm({ ...EMPTY_FORM, name: values.name, email: values.email });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't send your message. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      setIsSent(true);
-    }, 1500);
+    }
   };
 
   return (
@@ -90,10 +130,10 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Contact form (submission is simulated; no backend yet) */}
+          {/* Contact form: POST /api/contact → saved for Admin → Messages and emailed to the store */}
           <div className="lg:col-span-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-              {isSent ? (
+              {sentReference ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -105,15 +145,23 @@ export default function ContactPage() {
                   </div>
                   <h2 className="mt-4 text-xl font-bold text-slate-900">Message sent</h2>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
-                    Thank you for reaching out. Our team will get back to you at your email address within the next 2 hours.
+                    Thank you for reaching out. Your reference is{" "}
+                    <span className="font-semibold text-slate-900">{sentReference}</span>. We&apos;ll reply to your email address, usually within a few hours.
                   </p>
-                  <Button variant="secondary" onClick={() => setIsSent(false)} className="mt-6">
+                  <Button variant="secondary" onClick={() => setSentReference(null)} className="mt-6">
                     Send another message
                   </Button>
                 </motion.div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="relative space-y-5">
                   <h2 className="text-lg font-semibold text-slate-900">Send us a message</h2>
+
+                  {error && (
+                    <div ref={errorRef} role="alert" className="flex items-start gap-2 rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                      {error}
+                    </div>
+                  )}
 
                   <div className="grid gap-5 md:grid-cols-2">
                     <div>
@@ -122,9 +170,12 @@ export default function ContactPage() {
                         id="contact-name"
                         name="name"
                         required
+                        maxLength={80}
                         type="text"
                         autoComplete="name"
                         placeholder="John Doe"
+                        value={values.name}
+                        onChange={update("name")}
                         className={inputClass}
                       />
                     </div>
@@ -134,24 +185,55 @@ export default function ContactPage() {
                         id="contact-email"
                         name="email"
                         required
+                        maxLength={254}
                         type="email"
                         autoComplete="email"
                         placeholder="john@example.com"
+                        value={values.email}
+                        onChange={update("email")}
                         className={inputClass}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="contact-subject" className={labelClass}>Subject</label>
-                    <select id="contact-subject" name="subject" className={inputClass}>
-                      <option>Order difficulty</option>
-                      <option>Delivery delay</option>
-                      <option>Product quality issue</option>
-                      <option>Account support</option>
-                      <option>Other / feedback</option>
-                    </select>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="contact-phone" className={labelClass}>Phone <span className="font-normal text-slate-400">(optional)</span></label>
+                      <input
+                        id="contact-phone"
+                        name="phone"
+                        maxLength={30}
+                        type="tel"
+                        autoComplete="tel"
+                        placeholder="01XXXXXXXXX"
+                        value={values.phone}
+                        onChange={update("phone")}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contact-subject" className={labelClass}>Subject</label>
+                      <select id="contact-subject" name="subject" value={values.subject} onChange={update("subject")} className={inputClass}>
+                        {SUBJECTS.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </div>
                   </div>
+
+                  {(values.subject === "Order difficulty" || values.subject === "Delivery delay" || values.subject === "Product quality issue") && (
+                    <div>
+                      <label htmlFor="contact-order" className={labelClass}>Order number <span className="font-normal text-slate-400">(optional)</span></label>
+                      <input
+                        id="contact-order"
+                        name="orderRef"
+                        maxLength={40}
+                        type="text"
+                        placeholder="From My Orders"
+                        value={values.orderRef}
+                        onChange={update("orderRef")}
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label htmlFor="contact-message" className={labelClass}>Message</label>
@@ -159,10 +241,21 @@ export default function ContactPage() {
                       id="contact-message"
                       name="message"
                       required
+                      minLength={10}
+                      maxLength={MAX_MESSAGE}
                       rows={5}
                       placeholder="How can we help you today?"
+                      value={values.message}
+                      onChange={update("message")}
                       className={`${inputClass} resize-y`}
                     />
+                    <p className="mt-1 text-right text-xs text-slate-500 tabular-nums">{values.message.length} / {MAX_MESSAGE}</p>
+                  </div>
+
+                  {/* Spam trap: hidden from people and screen readers; bots that fill it are ignored. */}
+                  <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+                    <label htmlFor="contact-website">Website</label>
+                    <input id="contact-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={values.website} onChange={update("website")} />
                   </div>
 
                   <Button type="submit" size="lg" fullWidth loading={isSubmitting}>

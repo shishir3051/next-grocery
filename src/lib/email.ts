@@ -60,6 +60,58 @@ async function sendCodeEmail({ to, subject, heading, intro, code, footer }: Code
   }
 }
 
+/** Escapes text for safe use inside an HTML email (customer-written content). */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Plain text → escaped HTML paragraphs with line breaks kept. */
+export const textToHtml = (text: string) => escapeHtml(text).replace(/\r?\n/g, "<br>");
+
+interface PlainEmail {
+  to: string;
+  subject: string;
+  /** Plain-text body. The HTML version is generated from it (escaped). */
+  text: string;
+  /** Where replies go, e.g. the customer's address on a contact-form alert. */
+  replyTo?: string;
+}
+
+/**
+ * Sends a simple text email (with an escaped HTML copy). Subject lines are stripped of
+ * line breaks so customer text can never inject extra email headers.
+ */
+export async function sendPlainEmail({ to, subject, text, replyTo }: PlainEmail) {
+  const safeSubject = subject.replace(/[\r\n]+/g, " ").slice(0, 200);
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Email is not configured (EMAIL_USER / EMAIL_PASS)");
+    }
+    console.log(`\n=======================================\nMock email to: ${to}\nReply-To: ${replyTo ?? "-"}\nSubject: ${safeSubject}\n\n${text}\n=======================================\n`);
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+
+  await transporter.sendMail({
+    from: { name: "FreshBasket", address: process.env.EMAIL_USER },
+    to,
+    replyTo,
+    subject: safeSubject,
+    text,
+    html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.5;">${textToHtml(text)}</div>`,
+  });
+}
+
 export async function sendOTP(email: string, otp: string) {
   await sendCodeEmail({
     to: email,

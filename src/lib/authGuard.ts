@@ -20,7 +20,7 @@ export interface AuthorizedUser {
  */
 export const PRIVATE_USER_FIELDS =
   "-password -verificationOtp -otpExpiry -otpAttempts -resetOtp -resetOtpExpiry -resetOtpAttempts " +
-  "-resetWindowStart -resetCodesSent -resetFailures -passwordChangedAt";
+  "-resetWindowStart -resetCodesSent -resetFailures -passwordChangedAt -googleId";
 
 /**
  * The single authorization check for API routes.

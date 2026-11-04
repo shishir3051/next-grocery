@@ -13,6 +13,7 @@ To report a vulnerability, contact the maintainer privately instead of opening a
 | Emails stored and matched in lower case (one inbox = one account) | `models/User.ts` |
 | Email verification and password reset use 6-digit codes from `crypto.randomInt`, stored only as an HMAC, valid 10 minutes, single use, max 5 guesses per code | `lib/otp.ts` |
 | Resend cooldown 1 minute; reset: 5 codes and 10 wrong guesses per hour per account; verification and reset also limited per IP | `api/auth/*` |
+| Google sign-in accepts only Google accounts with a verified email. Accounts are matched by Google id, then email; linking to an unverified account replaces its password and pending code (blocks pre-registration takeover); an email tied to a different Google account is refused | `lib/googleAccount.ts` |
 | JWT sessions (30 days) are re-checked against the database every minute: deleted accounts and password changes end the session, role changes apply | `lib/auth.ts` |
 
 ## Authorization
@@ -47,6 +48,14 @@ To report a vulnerability, contact the maintainer privately instead of opening a
   with `val_id`, and the transaction id, amount and currency match (`api/payments/ssl-status`).
 - Abuse limits: 10 orders / 10 min per account, at most 5 unconfirmed COD orders, 20 coupon
   checks / 10 min.
+
+## Contact form
+
+- `POST /api/contact`: 5 messages per hour per IP and 3 per email, a hidden honeypot field for
+  bots, strict field validation. Messages are stored and shown to admins as plain text.
+- Alert and reply emails escape customer text, strip line breaks from subjects (no header
+  injection), and the form never emails the address a visitor types (no spam relay); only admin
+  replies, written by staff, go to the customer.
 
 ## Rate limiting
 

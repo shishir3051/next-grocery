@@ -31,7 +31,9 @@ npm run normalize-emails [-- --apply]       # one-time lower-case email migratio
 src/
   app/                    pages (App Router) and API routes
     api/admin/*           admin CRUD: products, categories, coupons, hero, orders, users, settings, stats
-    api/auth/*            register, verify-otp, forgot/reset password, NextAuth
+    api/auth/*            register, verify-otp, forgot/reset password, NextAuth (credentials + Google)
+    api/contact           public contact form → ContactMessage + email alert
+    api/admin/messages    admin inbox: list, status, reply by email, delete
     api/orders            COD checkout (POST) and order history (GET)
     api/payments/*        SSLCommerz init and callback/IPN
     api/delivery/orders   rider: assigned orders, mark delivered
@@ -42,6 +44,8 @@ src/
   context/                Auth, Cart, Wishlist providers
   lib/
     auth.ts               NextAuth options, login rate limiting, session re-validation
+    googleAccount.ts      Google sign-in: find/link/create the account safely
+    email.ts              Nodemailer: codes, plain emails (escapes customer text)
     authGuard.ts          requireRole() — the authorization check for every protected API
     validation.ts         input validators (strings, numbers, ObjectIds, images, slugs, email)
     http.ts               JSON body reader and error responses (never leak internals)

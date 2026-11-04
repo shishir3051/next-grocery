@@ -1,4 +1,6 @@
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { findOrCreateGoogleUser, isGoogleConfigured, type GoogleIdentity } from "@/lib/googleAccount";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
@@ -63,13 +65,41 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
         };
       }
-    })
+    }),
+    // "Continue with Google": enabled only when GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set.
+    // Redirect URI to register in Google Cloud: <site URL>/api/auth/callback/google
+    ...(isGoogleConfigured()
+      ? [GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          authorization: { params: { prompt: "select_account" } },
+        })]
+      : []),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      // Refusing (verified email missing, email tied to another Google account) sends the
+      // user back to /login?error=AccessDenied.
+      const linked = await findOrCreateGoogleUser({ ...(profile as GoogleIdentity), sub: account.providerAccountId });
+      return Boolean(linked);
+    },
+    async jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
+        if (account?.provider === "google") {
+          // NextAuth's user.id here is Google's id; the session must carry our own user id.
+          await dbConnect();
+          const dbUser = await User.findOne({ googleId: account.providerAccountId })
+            .select("_id role")
+            .lean<{ _id: unknown; role: string }>();
+          if (!dbUser) throw new Error("Google account is not linked");
+          token.id = String(dbUser._id);
+          token.role = dbUser.role;
+          delete token.picture;
+        } else {
+          token.id = user.id;
+          token.role = user.role;
+        }
         token.authTime = Date.now();
         token.checkedAt = Date.now();
         // Intentionally omitting user.image from token.picture here

@@ -7,6 +7,8 @@ const UserSchema = new Schema({
   // on databases created before this rule).
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
+  // Google account id ("sub") once the user has signed in with Google.
+  googleId: { type: String, unique: true, sparse: true },
   image: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin', 'delivery'], default: 'user' },
   address: {

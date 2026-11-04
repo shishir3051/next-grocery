@@ -104,6 +104,8 @@ Then in the browser: register → verify → add a product to the cart → check
 
 | Feature | Variables | Without them |
 |---|---|---|
+| Google sign-in | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (redirect URI `<site>/api/auth/callback/google`) | Email and password only |
+| Contact-form alerts to another inbox | `CONTACT_EMAIL_TO` | Alerts go to `EMAIL_USER`; all messages are in Admin → Messages |
 | Online payments (SSLCommerz) | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD`, `IS_LIVE` | Cash on delivery and wallet only |
 | AI search and recipes (Google Gemini) | `GEMINI_API_KEY` | Keyword search, curated recipes |
 | Bangladeshi address search (Barikoi) | `BARIKOI_API_KEY` | OpenStreetMap Nominatim |

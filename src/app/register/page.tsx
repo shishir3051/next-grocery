@@ -7,6 +7,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Mail, Lock, User, ArrowRight, CheckCircle2, ChevronLeft, Leaf, AlertCircle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import Button from "@/components/ui/Button";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 // Shared input style from docs/design/DESIGN_SYSTEM.md (left padding leaves room for the icon)
 const INPUT_CLASS =
@@ -164,6 +165,8 @@ export default function RegisterPage() {
                 onSubmit={handleRegister}
                 className="space-y-5"
               >
+                <GoogleSignInButton label="Sign up with Google" />
+
                 <div className="space-y-1.5">
                   <label htmlFor="register-name" className={LABEL_CLASS}>Full name</label>
                   <div className="relative">
