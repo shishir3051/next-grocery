@@ -1,42 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from "@/lib/authGuard";
-import dbConnect from '@/lib/mongodb';
 import { News } from '@/models/News';
+import { requireRole } from "@/lib/authGuard";
+import { badRequest, isDuplicateKeyError, readJsonObject, serverError } from "@/lib/http";
+import { parseNews } from "@/lib/newsInput";
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  await dbConnect();
   try {
-    const body = await request.json();
-    const { title, content, excerpt, category, image, imageData, readTime } = body;
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    if (!title || !content || !excerpt || !category || !readTime) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    const body = await readJsonObject(request);
+    if (!body) return badRequest();
 
-    // Simple slugification
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    const parsed = parseNews(body, false);
+    if ("error" in parsed) return badRequest(parsed.error);
 
-    const newArticle = await News.create({
-      title,
-      slug,
-      content,
-      excerpt,
-      category,
-      image: image || 'uploaded',
-      imageData,
-      readTime,
-      isPublished: true
-    });
+    const newArticle = await News.create({ isPublished: true, ...parsed.value });
 
-    return NextResponse.json({ 
-      message: 'Article created successfully', 
-      article: newArticle 
+    return NextResponse.json({
+      message: 'Article created successfully',
+      article: newArticle
     }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return badRequest("A story with this title already exists");
+    return serverError(error, "News create error");
   }
 }

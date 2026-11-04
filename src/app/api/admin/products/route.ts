@@ -1,151 +1,175 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import dbConnect from "@/lib/mongodb";
 import { Product, Category } from "@/models/Product";
-import { User } from "@/models/User";
 import { getBase64FromUrl } from "@/lib/imageUtils";
+import { requireRole } from "@/lib/authGuard";
+import { badRequest, isDuplicateKeyError, notFound, readJsonObject, serverError } from "@/lib/http";
+import { isHttpsUrl, isObjectId, optionalImage, optionalString, requiredString, slugify, toNumber } from "@/lib/validation";
 
-async function resolveCategoryId(categoryName: string) {
-  if (categoryName.match(/^[0-9a-fA-F]{24}$/)) return categoryName; // Already an ID
-  const cat = await Category.findOne({ name: categoryName });
-  return cat ? cat._id : null;
+const MAX_PRICE = 1_000_000;
+const MAX_STOCK = 1_000_000;
+
+async function resolveCategoryId(category: unknown): Promise<string | null> {
+  if (isObjectId(category)) {
+    return (await Category.exists({ _id: category })) ? category : null;
+  }
+  const name = requiredString(category, 60);
+  if (!name) return null;
+  const found = await Category.findOne({ name }).select("_id").lean<{ _id: unknown }>();
+  return found ? String(found._id) : null;
 }
 
 /**
- * Handle Product management for admins.
+ * Validates the product fields that are present in the body (all of them when `partial`
+ * is false). Only these fields can ever be written: anything else in the body is ignored.
  */
+async function parseProduct(body: Record<string, unknown>, partial: boolean) {
+  const has = (key: string) => body[key] !== undefined;
+  const out: Record<string, unknown> = {};
+
+  if (!partial || has("name")) {
+    const name = requiredString(body.name, 120);
+    if (!name) return { error: "Product name is required (max 120 characters)" };
+    out.name = name;
+    out.slug = slugify(name, "product");
+  }
+  if (!partial || has("price")) {
+    const price = toNumber(body.price, { min: 0.01, max: MAX_PRICE });
+    if (price === null) return { error: "Price must be a positive number" };
+    out.price = price;
+  }
+  if (has("discountPrice")) {
+    // discountPrice is the sale price; empty or 0 means "no discount".
+    const raw = body.discountPrice === "" || body.discountPrice === null ? 0 : body.discountPrice;
+    const discountPrice = toNumber(raw, { min: 0, max: MAX_PRICE });
+    if (discountPrice === null) return { error: "Discount price must be a number" };
+    out.discountPrice = discountPrice;
+  }
+  if (!partial || has("unit")) {
+    const unit = requiredString(body.unit, 30);
+    if (!unit) return { error: "Unit is required (e.g. 1 kg)" };
+    out.unit = unit;
+  }
+  if (!partial || has("category")) {
+    const category = await resolveCategoryId(body.category);
+    if (!category) return { error: "Category not found" };
+    out.category = category;
+  }
+  if (has("description")) {
+    const description = optionalString(body.description, 2000);
+    if (description === null) return { error: "Description is too long (max 2,000 characters)" };
+    out.description = description;
+  }
+  if (!partial || has("stock")) {
+    const raw = body.stock === undefined || body.stock === "" ? 0 : body.stock;
+    const stock = toNumber(raw, { min: 0, max: MAX_STOCK, integer: true });
+    if (stock === null) return { error: "Stock must be a whole number of 0 or more" };
+    out.stock = stock;
+  }
+  for (const flag of ["isOrganic", "isHalal"] as const) {
+    if (has(flag)) out[flag] = body[flag] === true;
+  }
+
+  // Images: an uploaded data URL / https URL in imageData, or an https URL to download.
+  if (has("imageData")) {
+    const imageData = optionalImage(body.imageData);
+    if (imageData === null) return { error: "Image must be a PNG, JPEG, WebP, GIF or AVIF under 2 MB, or an https URL" };
+    out.imageData = imageData;
+  }
+  if (has("imageUrl") && body.imageUrl) {
+    if (!isHttpsUrl(body.imageUrl)) return { error: "Image URL must start with https://" };
+    const downloaded = await getBase64FromUrl(body.imageUrl);
+    if (!downloaded) return { error: "Could not download that image (https, public host, image type, max 2 MB)" };
+    out.imageData = downloaded;
+    out.images = [body.imageUrl];
+  } else if (has("image")) {
+    if (body.image && !isHttpsUrl(body.image)) return { error: "Image URL must start with https://" };
+    out.images = body.image ? [body.image] : [];
+  }
+
+  const price = (out.price as number | undefined);
+  const discountPrice = (out.discountPrice as number | undefined);
+  if (price !== undefined && discountPrice !== undefined && discountPrice >= price && discountPrice !== 0) {
+    return { error: "Discount price must be lower than the regular price" };
+  }
+
+  return { value: out };
+}
+
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const products = await Product.find().populate('category', 'name slug').sort({ createdAt: -1 });
+    const products = await Product.find().populate('category', 'name slug').sort({ createdAt: -1 }).lean();
     return NextResponse.json({ products });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin products fetch error");
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const body = await readJsonObject(request);
+    if (!body) return badRequest();
 
-    const body = await request.json();
-    let { name, price, discountPrice, unit, category, description, image, imageUrl, stock, isOrganic, isHalal } = body;
+    const parsed = await parseProduct(body, false);
+    if ("error" in parsed) return badRequest(parsed.error);
 
-    const resolvedCategory = await resolveCategoryId(category);
-    if (!resolvedCategory) {
-      return NextResponse.json({ error: `Category "${category}" not found` }, { status: 400 });
-    }
-
-    // Process image if URL is provided
-    let imageData = "";
-    if (imageUrl) {
-      imageData = await getBase64FromUrl(imageUrl) || "";
-    }
-
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
-    const newProduct = await Product.create({
-      name,
-      slug,
-      price: Number(price),
-      discountPrice: Number(discountPrice) || 0,
-      unit,
-      category: resolvedCategory,
-      description,
-      images: [imageUrl || image],
-      imageData: imageData || body.imageData,
-      stock: Number(stock) || 100,
-      isOrganic: !!isOrganic,
-      isHalal: !!isHalal,
-    });
-
+    const newProduct = await Product.create(parsed.value);
     return NextResponse.json({ message: "Product created successfully", product: newProduct });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return badRequest("A product with this name already exists");
+    return serverError(error, "Admin product create error");
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
+
+    const body = await readJsonObject(request);
+    if (!body || !isObjectId(body.id)) return badRequest("Product ID required");
+
+    const parsed = await parseProduct(body, true);
+    if ("error" in parsed) return badRequest(parsed.error);
+
+    // When only one of price / discountPrice changes, check the pair against the stored value.
+    const { price, discountPrice } = parsed.value as { price?: number; discountPrice?: number };
+    if ((price === undefined) !== (discountPrice === undefined)) {
+      const current = await Product.findById(body.id).select("price discountPrice").lean<{ price: number; discountPrice?: number }>();
+      if (!current) return notFound("Product not found");
+      const finalPrice = price ?? current.price;
+      const finalDiscount = discountPrice ?? current.discountPrice ?? 0;
+      if (finalDiscount !== 0 && finalDiscount >= finalPrice) {
+        return badRequest("Discount price must be lower than the regular price");
+      }
     }
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { id, ...updateData } = body;
-
-    // If category is a name, resolve it to ID
-    if (updateData.category) {
-      const resolved = await resolveCategoryId(updateData.category);
-      if (resolved) updateData.category = resolved;
-    }
-
-    if (updateData.name) {
-      updateData.slug = updateData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    }
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
-    
-    if (!updatedProduct) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
+    const updatedProduct = await Product.findByIdAndUpdate(body.id, { $set: parsed.value }, { new: true, runValidators: true });
+    if (!updatedProduct) return notFound("Product not found");
 
     return NextResponse.json({ message: "Product updated successfully", product: updatedProduct });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return badRequest("A product with this name already exists");
+    return serverError(error, "Admin product update error");
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: "ID required" }, { status: 400 });
-    }
+    const id = request.nextUrl.searchParams.get('id');
+    if (!isObjectId(id)) return badRequest("ID required");
 
     await Product.findByIdAndDelete(id);
     return NextResponse.json({ message: "Product deleted successfully" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin product delete error");
   }
 }

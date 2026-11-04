@@ -197,7 +197,7 @@ export async function seed() {
         
         await Product.create({
           name: prod.name, slug: prod.slug, description: prod.description,
-          price: prod.price, unit: prod.unit, image: prod.image, 
+          price: prod.price, unit: prod.unit, images: prod.image ? [prod.image] : [],
           imageData: imageData || undefined, category: categoryId, stock: 50, isHalal: true
         });
       }

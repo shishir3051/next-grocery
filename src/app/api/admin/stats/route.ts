@@ -1,24 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import dbConnect from "@/lib/mongodb";
+import { NextResponse } from "next/server";
 import { Order } from "@/models/Order";
 import { Product } from "@/models/Product";
 import { User } from "@/models/User";
+import { requireRole } from "@/lib/authGuard";
+import { serverError } from "@/lib/http";
+
+// Paid orders and cash-on-delivery orders that aren't cancelled count as sales;
+// unpaid online checkouts that were abandoned don't.
+const SALES_FILTER = {
+  status: { $ne: "cancelled" },
+  $or: [{ paymentStatus: "paid" }, { paymentProvider: "cod" }],
+};
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await dbConnect();
-    const user = await User.findOne({ email: session.user.email });
-    
-    if (user?.role !== 'admin') {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
     // Date ranges for trend calculation
     const now = new Date();
@@ -26,40 +23,41 @@ export async function GET() {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
     const [
-      totalOrders, 
-      totalProducts, 
-      totalUsers, 
-      latestOrders, 
+      totalOrders,
+      totalProducts,
+      totalUsers,
+      latestOrders,
       lowStockProducts,
       currentPeriodSales,
       prevPeriodSales,
       currentPeriodOrders,
       prevPeriodOrders,
-      dailySalesData
+      dailySalesData,
+      totalSalesAllTime,
     ] = await Promise.all([
       Order.countDocuments(),
       Product.countDocuments(),
       User.countDocuments(),
-      Order.find().sort({ createdAt: -1 }).limit(5).populate('user', 'name email'),
-      Product.find({ stock: { $lt: 10 } }).limit(5).sort({ stock: 1 }),
-      
+      Order.find().sort({ createdAt: -1 }).limit(5).select("-items.imageData").populate("user", "name email").lean(),
+      Product.find({ stock: { $lt: 10 } }).limit(5).sort({ stock: 1 }).lean(),
+
       // Current 7 days sales
       Order.aggregate([
-        { $match: { createdAt: { $gte: sevenDaysAgo }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: sevenDaysAgo }, ...SALES_FILTER } },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } }
       ]),
       // Previous 7 days sales
       Order.aggregate([
-        { $match: { createdAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo }, ...SALES_FILTER } },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } }
       ]),
       // Order counts for trends
       Order.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
       Order.countDocuments({ createdAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } }),
-      
+
       // Daily sales for chart
       Order.aggregate([
-        { $match: { createdAt: { $gte: sevenDaysAgo }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: sevenDaysAgo }, ...SALES_FILTER } },
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -67,11 +65,11 @@ export async function GET() {
           }
         },
         { $sort: { _id: 1 } }
-      ])
-    ]);
-
-    const totalSalesAllTime = await Order.aggregate([
-      { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } }
+      ]),
+      Order.aggregate([
+        { $match: SALES_FILTER },
+        { $group: { _id: null, totalSales: { $sum: "$totalAmount" } } }
+      ]),
     ]);
 
     // Calculate trends
@@ -91,7 +89,7 @@ export async function GET() {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dateStr = d.toISOString().split('T')[0];
       const dayName = days[d.getDay()];
-      const dayData = dailySalesData.find(item => item._id === dateStr);
+      const dayData = dailySalesData.find((item: { _id: string }) => item._id === dateStr);
       salesHistory.push({
         name: dayName,
         sales: dayData ? dayData.sales : 0,
@@ -117,8 +115,7 @@ export async function GET() {
       latestOrders,
       lowStockProducts
     });
-  } catch (error: any) {
-    console.error("Stats API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin stats error");
   }
 }

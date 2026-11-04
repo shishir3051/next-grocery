@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProducts, searchProducts } from '@/lib/actions';
+import { serverError } from '@/lib/http';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const search = searchParams.get('search');
+    const category = request.nextUrl.searchParams.get('category')?.slice(0, 100);
+    const search = request.nextUrl.searchParams.get('search');
 
-    let products;
-    if (search) {
-      products = await searchProducts(search);
-    } else {
-      products = await getProducts(category || undefined);
-    }
-
+    const products = search ? await searchProducts(search) : await getProducts(category || undefined);
     return NextResponse.json({ products });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, 'Products fetch error');
   }
 }

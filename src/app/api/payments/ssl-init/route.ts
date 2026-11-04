@@ -8,6 +8,8 @@ import { Settings } from "@/models/Settings";
 import { User } from "@/models/User";
 import { parseOrderRequest, buildOrderQuote, consumeCoupon, releaseCoupon } from "@/lib/orders";
 import { SSLCOMMERZ_INIT_URL } from "@/lib/sslcommerz";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +17,9 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const limit = await checkRateLimit(`ssl-init:${session.user.id}`, 10, 10 * 60 * 1000);
+    if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many payment attempts. Please wait a few minutes.");
 
     await dbConnect();
 
@@ -31,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Validate input and price the order from the database (client totals are ignored).
     //    Stock and coupon usage are applied only once the payment is validated (see ssl-status).
-    const parsed = parseOrderRequest(await request.json());
+    const parsed = parseOrderRequest(await readJsonObject(request));
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
 
     const quoted = await buildOrderQuote(parsed.value, settings);
@@ -118,11 +123,12 @@ export async function POST(request: NextRequest) {
     }
 
     // The customer never reached the gateway: cancel the provisional order and free the coupon.
-    console.error("SSLCommerz API Error Response:", apiResponse);
+    // Log the gateway's reason; don't show raw gateway messages to customers.
+    console.error("SSLCommerz init failed:", apiResponse?.status, apiResponse?.failedreason);
     await Order.updateOne({ _id: order._id, paymentStatus: 'unpaid' }, { $set: { status: 'cancelled' } });
     await releaseReservedCoupon();
     return NextResponse.json({
-      error: apiResponse?.failedreason || "Failed to initialize payment gateway",
+      error: "Online payment is unavailable right now. Please try again or choose cash on delivery.",
     }, { status: 502 });
   } catch (error) {
     console.error("SSLCommerz Init Error:", error);

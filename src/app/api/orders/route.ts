@@ -16,6 +16,10 @@ import {
   creditWallet,
 } from "@/lib/orders";
 import { roundMoney } from "@/lib/pricing";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
+
+const MAX_OPEN_COD_ORDERS = 5;
 
 /** Places a Cash-on-Delivery order (optionally part- or fully-paid from the wallet). */
 export async function POST(request: NextRequest) {
@@ -26,7 +30,19 @@ export async function POST(request: NextRequest) {
     }
     const userId = session.user.id;
 
+    // Abuse limits: COD orders reserve stock immediately, so one account must not be
+    // able to tie up the inventory with a flood of orders it never intends to receive.
+    const limit = await checkRateLimit(`order:${userId}`, 10, 10 * 60 * 1000);
+    if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many orders in a short time. Please wait a few minutes.");
+
     await dbConnect();
+
+    const openCodOrders = await Order.countDocuments({ user: userId, paymentProvider: 'cod', status: 'pending' });
+    if (openCodOrders >= MAX_OPEN_COD_ORDERS) {
+      return NextResponse.json({
+        error: `You already have ${MAX_OPEN_COD_ORDERS} orders waiting to be confirmed. Please wait for them to be processed.`,
+      }, { status: 409 });
+    }
 
     // 0. Check Maintenance Mode
     const settings = await Settings.findOne();
@@ -40,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Validate input and price the order from the database (client totals are ignored)
-    const parsed = parseOrderRequest(await request.json());
+    const parsed = parseOrderRequest(await readJsonObject(request));
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
 
     const quoted = await buildOrderQuote(parsed.value, settings);
@@ -106,9 +122,12 @@ export async function GET() {
 
     await dbConnect();
 
+    // Only the fields the order history needs; never the product's full document.
     const orders = await Order.find({ user: session.user.id })
       .sort({ createdAt: -1 })
-      .populate('items.productId');
+      .limit(100)
+      .populate('items.productId', 'name slug images unit')
+      .lean();
 
     return NextResponse.json({ orders });
   } catch (error) {

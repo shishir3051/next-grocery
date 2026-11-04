@@ -1,149 +1,104 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Category, Product } from "@/models/Product";
-import { User } from "@/models/User";
+import { requireRole } from "@/lib/authGuard";
+import { badRequest, isDuplicateKeyError, notFound, readJsonObject, serverError } from "@/lib/http";
+import { isObjectId, optionalString, requiredString, slugify } from "@/lib/validation";
 
-async function checkAdmin(session: any) {
-  if (!session || !session.user) return false;
-  await dbConnect();
-  const adminUser = await User.findOne({ email: session.user.email });
-  return adminUser?.role === 'admin';
+const MAX_DEPTH = 2; // top level (0) → subcategory (1) → sub-subcategory (2)
+
+/** Reads and validates name / parentId / icon. Returns an error message or the clean values. */
+async function parseCategory(body: Record<string, unknown> | null, selfId?: string) {
+  const name = requiredString(body?.name, 60);
+  if (!name) return { error: "Name is required (max 60 characters)" };
+
+  const icon = optionalString(body?.icon, 16);
+  if (icon === null) return { error: "Icon must be a short emoji or text" };
+
+  const rawParent = body?.parentId;
+  let parentId: string | null = null;
+  let level = 0;
+  if (rawParent !== undefined && rawParent !== null && rawParent !== "" && rawParent !== "null") {
+    if (!isObjectId(rawParent) || rawParent === selfId) return { error: "Invalid parent category" };
+    const parent = await Category.findById(rawParent).select("level").lean<{ level?: number }>();
+    if (!parent) return { error: "Parent category not found" };
+    level = (parent.level || 0) + 1;
+    if (level > MAX_DEPTH) return { error: "Categories can be nested at most three levels deep" };
+    parentId = rawParent;
+  }
+
+  return { value: { name, slug: slugify(name, "category"), parentId, icon: icon || "", level } };
 }
 
-/**
- * Handle Category management for admins.
- */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!(await checkAdmin(session))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const categories = await Category.find().sort({ level: 1, name: 1 });
+    const categories = await Category.find().sort({ level: 1, name: 1 }).lean();
     return NextResponse.json({ categories });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin categories fetch error");
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!(await checkAdmin(session))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    const { name, parentId, icon } = await request.json();
+    const parsed = await parseCategory(await readJsonObject(request));
+    if ("error" in parsed) return badRequest(parsed.error);
 
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
-
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
-    let level = 0;
-    if (parentId && parentId !== 'null' && parentId !== '') {
-        const parent = await Category.findById(parentId);
-        if (parent) {
-            level = (parent.level || 0) + 1;
-        }
-    }
-
-    const newCategory = await Category.create({ 
-      name, 
-      slug, 
-      parentId: (parentId && parentId !== 'null' && parentId !== '') ? parentId : null, 
-      icon: icon || '', 
-      level 
-    });
-
+    const newCategory = await Category.create(parsed.value);
     return NextResponse.json({ message: "Category created successfully", category: newCategory });
-  } catch (error: any) {
-    if (error.code === 11000) {
-        return NextResponse.json({ error: "A category with this name already exists" }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return badRequest("A category with this name already exists");
+    return serverError(error, "Admin category create error");
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!(await checkAdmin(session))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    const { id, name, parentId, icon } = await request.json();
+    const body = await readJsonObject(request);
+    const id = body?.id;
+    if (!isObjectId(id)) return badRequest("ID and Name are required");
 
-    if (!id || !name) {
-      return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
-    }
+    await dbConnect();
+    const parsed = await parseCategory(body, id);
+    if ("error" in parsed) return badRequest(parsed.error);
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    
-    let level = 0;
-    if (parentId && parentId !== 'null' && parentId !== '') {
-        const parent = await Category.findById(parentId);
-        if (parent) {
-            level = (parent.level || 0) + 1;
-        }
-    }
-
-    const updatedCategory = await Category.findByIdAndUpdate(
-      id, 
-      { 
-        name, 
-        slug, 
-        parentId: (parentId && parentId !== 'null' && parentId !== '') ? parentId : null, 
-        icon: icon || '', 
-        level 
-      }, 
-      { new: true }
-    );
-
-    if (!updatedCategory) {
-      return NextResponse.json({ error: "Category not found" }, { status: 404 });
-    }
+    const updatedCategory = await Category.findByIdAndUpdate(id, { $set: parsed.value }, { new: true, runValidators: true });
+    if (!updatedCategory) return notFound("Category not found");
 
     return NextResponse.json({ message: "Category updated successfully", category: updatedCategory });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return badRequest("A category with this name already exists");
+    return serverError(error, "Admin category update error");
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!(await checkAdmin(session))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
+
+    const id = request.nextUrl.searchParams.get("id");
+    if (!isObjectId(id)) return badRequest("ID required");
+
+    if (await Category.exists({ parentId: id })) {
+      return badRequest("Cannot delete category with subcategories");
     }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: "ID required" }, { status: 400 });
-    }
-
-    // Check if category has subcategories
-    const hasSubs = await Category.findOne({ parentId: id });
-    if (hasSubs) {
-        return NextResponse.json({ error: "Cannot delete category with subcategories" }, { status: 400 });
-    }
-
-    // Check if category has products
-    const hasProducts = await Product.findOne({ category: id });
-    if (hasProducts) {
-        return NextResponse.json({ error: "Cannot delete category with assigned products" }, { status: 400 });
+    if (await Product.exists({ category: id })) {
+      return badRequest("Cannot delete category with assigned products");
     }
 
     await Category.findByIdAndDelete(id);
     return NextResponse.json({ message: "Category deleted successfully" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin category delete error");
   }
 }

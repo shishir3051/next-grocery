@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { AiUnavailableError, generateJson, isAiAvailable } from '@/lib/ai/gemini';
 import { formatCatalogForPrompt, getCatalog, getProductsByIds, keywordSearch, type CatalogItem } from '@/lib/ai/catalog';
-import { clientKey, rateLimit } from '@/lib/rateLimit';
+import { checkRateLimit, clientKey } from '@/lib/rateLimit';
 
 /**
  * POST /api/ai/smart-search  { query: string }
@@ -121,7 +121,7 @@ async function aiSearch(query: string, catalog: CatalogItem[]): Promise<{ ids: s
 }
 
 export async function POST(request: NextRequest) {
-  const limit = rateLimit(clientKey(request, 'ai-smart-search'), RATE_LIMIT.requests, RATE_LIMIT.windowMs);
+  const limit = await checkRateLimit(clientKey(request, 'ai-smart-search'), RATE_LIMIT.requests, RATE_LIMIT.windowMs);
   if (!limit.ok) {
     return NextResponse.json(
       { error: `Too many searches. Please wait ${limit.retryAfterSeconds} seconds and try again.` },

@@ -2,7 +2,10 @@ import mongoose, { Schema, model, models } from 'mongoose';
 
 const UserSchema = new Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  // Stored lower-case, and Mongoose lower-cases query filters on this field too, so
+  // "Ana@x.com" and "ana@x.com" are one account (run scripts/normalize-emails.mjs once
+  // on databases created before this rule).
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   image: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin', 'delivery'], default: 'user' },

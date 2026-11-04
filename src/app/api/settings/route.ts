@@ -24,7 +24,8 @@ export async function GET() {
         'Cache-Control': 'no-store, max-age=0'
       }
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("Public settings error:", error);
+    return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
   }
 }

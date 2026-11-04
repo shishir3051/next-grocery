@@ -1,138 +1,109 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
-import bcrypt from "bcryptjs";
+import { requireRole, PRIVATE_USER_FIELDS, type Role } from "@/lib/authGuard";
+import { badRequest, isDuplicateKeyError, notFound, readJsonObject, serverError } from "@/lib/http";
+import { isObjectId, normalizeEmail, requiredString } from "@/lib/validation";
 
+const ROLES: Role[] = ["user", "admin", "delivery"];
+const isRole = (value: unknown): value is Role => typeof value === "string" && (ROLES as string[]).includes(value);
+
+/** Creates a verified account with a chosen role (e.g. a delivery rider). Admin only. */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
+
+    const body = await readJsonObject(request);
+    const name = requiredString(body?.name, 80);
+    const email = normalizeEmail(body?.email);
+    const password = typeof body?.password === "string" ? body.password : "";
+    const role = body?.role;
+
+    if (!name || !email || !isRole(role)) {
+      return badRequest("Enter a name, a valid email and a role");
+    }
+    if (password.length < 8 || password.length > 128) {
+      return badRequest("Password must be between 8 and 128 characters");
     }
 
     await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { name, email, password, role } = await request.json();
-
-    if (!name || !email || !password || !role) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json({ error: "User already exists with this email" }, { status: 400 });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const referralCode = `FRESH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
     const newUser = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password: await bcrypt.hash(password, 12),
       role,
-      isVerified: true, 
-      referralCode
+      isVerified: true,
+      referralCode: `FRESH-${randomBytes(4).toString("hex").toUpperCase()}`,
     });
 
-    return NextResponse.json({ 
-      message: "User created successfully", 
-      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role } 
+    return NextResponse.json({
+      message: "User created successfully",
+      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role },
     }, { status: 201 });
-
-  } catch (error: any) {
-    console.error("User creation error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return badRequest("User already exists with this email");
+    return serverError(error, "Admin user creation error");
   }
 }
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Return all users except passwords
-    const users = await User.find({}, '-password').sort({ createdAt: -1 });
+    // Never send password hashes or one-time-code hashes, even to admins.
+    const users = await User.find({}).select(PRIVATE_USER_FIELDS).sort({ createdAt: -1 }).lean();
     return NextResponse.json({ users });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin users fetch error");
   }
 }
 
+/** Changes a user's role. */
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
+
+    const body = await readJsonObject(request);
+    const id = body?.id;
+    const role = body?.role;
+    if (!isObjectId(id) || !isRole(role)) return badRequest("Invalid user or role");
+
+    if (auth.user.id === id && role !== "admin") {
+      return badRequest("Cannot demote yourself");
     }
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { id, role } = await request.json();
-    
-    // Prevent admin from demoting themselves (safety)
-    if (adminUser._id.toString() === id && role !== 'admin') {
-        return NextResponse.json({ error: "Cannot demote yourself" }, { status: 400 });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(id, { role }, { new: true });
-    
-    if (!updatedUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const updatedUser = await User.findByIdAndUpdate(id, { $set: { role } }, { new: true, runValidators: true })
+      .select(PRIVATE_USER_FIELDS)
+      .lean();
+    if (!updatedUser) return notFound("User not found");
 
     return NextResponse.json({ message: "User role updated", user: updatedUser });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin user role update error");
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireRole("admin");
+    if ("response" in auth) return auth.response;
+
+    const id = request.nextUrl.searchParams.get("id");
+    if (!isObjectId(id)) return badRequest("ID required");
+
+    if (auth.user.id === id) {
+      return badRequest("Cannot delete yourself");
     }
 
-    await dbConnect();
-    const adminUser = await User.findOne({ email: session.user.email });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: "ID required" }, { status: 400 });
-    }
-    
-    // Prevent admin from deleting themselves
-    if (adminUser._id.toString() === id) {
-        return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
-    }
-
-    await User.findByIdAndDelete(id);
+    const deleted = await User.findByIdAndDelete(id);
+    if (!deleted) return notFound("User not found");
     return NextResponse.json({ message: "User deleted successfully" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Admin user delete error");
   }
 }

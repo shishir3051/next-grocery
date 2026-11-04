@@ -4,8 +4,11 @@ import { randomBytes } from "crypto";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { generateOtp, hashOtp, resendAllowedIfExpiryBefore, OTP_TTL_MS } from "@/lib/otp";
+import { normalizeEmail } from "@/lib/validation";
+import { checkRateLimit, clientKey } from "@/lib/rateLimit";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const HOUR = 60 * 60 * 1000;
 
 async function findReferrerId(referralCode: unknown) {
   if (typeof referralCode !== "string" || !referralCode.trim() || referralCode.length > 20) return null;
@@ -30,7 +33,11 @@ async function sendOtpOrReleaseCooldown(userId: unknown, email: string, otp: str
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, referralCode } = await request.json();
+    // Sign-ups send email, so cap them per IP (stops account spam and email bombing).
+    const limit = await checkRateLimit(clientKey(request, "register"), 10, HOUR);
+    if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many sign-up attempts. Please try again later.");
+
+    const { name, email, password, referralCode } = (await readJsonObject(request)) ?? {};
 
     // Strict type checks also block NoSQL operator injection like { "email": { "$ne": null } }
     if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || !name.trim() || !email.trim()) {
@@ -39,7 +46,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (name.length > 80 || email.length > 254 || !EMAIL_PATTERN.test(email.trim())) {
+    const validEmail = normalizeEmail(email);
+    if (name.trim().length > 80 || !validEmail) {
       return NextResponse.json({ error: "Please enter a valid name and email address" }, { status: 400 });
     }
     if (password.length < 8 || password.length > 128) {
@@ -48,7 +56,8 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const normalizedEmail = email.trim();
+    // Lower-cased: one inbox can't hold several accounts (and several referral rewards).
+    const normalizedEmail = validEmail;
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     const otp = generateOtp();

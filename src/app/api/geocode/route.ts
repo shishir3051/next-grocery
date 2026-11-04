@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit, clientKey } from '@/lib/rateLimit';
+import { checkRateLimit, clientKey } from '@/lib/rateLimit';
 
 /**
  * Geocoding proxy used by the delivery-location modal.
@@ -345,7 +345,7 @@ export async function GET(request: NextRequest) {
   const lookup = parseLookup(request.nextUrl.searchParams);
   if ('error' in lookup) return NextResponse.json({ error: lookup.error }, { status: 400 });
 
-  const limit = rateLimit(clientKey(request, 'geocode'), CLIENT_LIMIT, CLIENT_WINDOW_MS);
+  const limit = await checkRateLimit(clientKey(request, 'geocode'), CLIENT_LIMIT, CLIENT_WINDOW_MS);
   if (!limit.ok) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again shortly.' },

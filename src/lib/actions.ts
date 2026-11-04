@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/mongodb';
 import { Product, Category } from '@/models/Product';
+import { escapeRegex } from '@/lib/validation';
 
 export async function getCategories() {
   await dbConnect();
@@ -43,13 +44,21 @@ export async function getProducts(categorySlug?: string) {
   }
 }
 
+const MAX_SEARCH_LENGTH = 64;
+
 export async function searchProducts(searchTerm: string) {
+  // Treat the search text literally: an unescaped $regex lets anyone send patterns
+  // like (a+)+$ that make MongoDB backtrack for a long time (ReDoS).
+  const term = typeof searchTerm === 'string' ? searchTerm.trim().slice(0, MAX_SEARCH_LENGTH) : '';
+  if (!term) return [];
+  const pattern = escapeRegex(term);
+
   await dbConnect();
   try {
     const products = await Product.find({
       $or: [
-        { name: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } }
+        { name: { $regex: pattern, $options: 'i' } },
+        { description: { $regex: pattern, $options: 'i' } }
       ]
     }).populate('category').lean();
     return JSON.parse(JSON.stringify(products));

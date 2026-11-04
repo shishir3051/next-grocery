@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { AiUnavailableError, generateJson, isAiAvailable } from '@/lib/ai/gemini';
 import { formatCatalogForPrompt, getCatalog, getProductsByIds, headNoun, type CatalogItem } from '@/lib/ai/catalog';
-import { clientKey, rateLimit } from '@/lib/rateLimit';
+import { checkRateLimit, clientKey } from '@/lib/rateLimit';
 import { getEffectivePrice } from '@/lib/pricing';
 
 /**
@@ -563,7 +563,7 @@ export async function POST(request: NextRequest) {
     const cached = readCache(key);
     if (cached) return NextResponse.json(cached);
 
-    const limit = rateLimit(clientKey(request, 'ai-recipes'), RATE_LIMIT.limit, RATE_LIMIT.windowMs);
+    const limit = await checkRateLimit(clientKey(request, 'ai-recipes'), RATE_LIMIT.limit, RATE_LIMIT.windowMs);
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many recipe requests. Please wait a moment and try again.' },

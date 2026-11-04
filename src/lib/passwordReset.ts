@@ -13,12 +13,4 @@ export async function rollResetWindow(filter: Record<string, unknown>) {
   );
 }
 
-/** Reads the JSON body, returning null for malformed or non-object bodies. */
-export async function readJsonObject(request: Request): Promise<Record<string, unknown> | null> {
-  try {
-    const body = await request.json();
-    return body && typeof body === "object" && !Array.isArray(body) ? body : null;
-  } catch {
-    return null;
-  }
-}
+export { readJsonObject } from "@/lib/http";

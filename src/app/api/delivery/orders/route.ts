@@ -1,74 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import dbConnect from "@/lib/mongodb";
 import { Order } from "@/models/Order";
-import { User } from "@/models/User";
+import { requireRole } from "@/lib/authGuard";
+import { badRequest, jsonError, readJsonObject, serverError } from "@/lib/http";
+import { isObjectId } from "@/lib/validation";
+import { transitionOrder } from "@/lib/orderStatus";
 
+/** Orders assigned to the signed-in rider that are still out for delivery. */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("delivery", "admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const deliveryUser = await User.findOne({ email: session.user.email });
-    if (!deliveryUser || (deliveryUser.role !== 'delivery' && deliveryUser.role !== 'admin')) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Orders assigned to this user that are not delivered/cancelled
-    const orders = await Order.find({ 
-      assignedTo: deliveryUser._id,
+    const orders = await Order.find({
+      assignedTo: auth.user.id,
       status: { $nin: ['delivered', 'cancelled'] }
     })
-    .populate('user', 'name email address')
-    .sort({ createdAt: -1 });
+      .select("-items.imageData")
+      .populate('user', 'name email address')
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json({ orders });
-  } catch (error: any) {
-    console.error("Delivery API GET Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, "Delivery orders fetch error");
   }
 }
 
+/**
+ * A rider can only mark one of their own shipped orders as delivered. Cash-on-delivery
+ * orders become paid at that moment; online orders keep the status the payment
+ * gateway confirmed. Riders can't set any other status or payment state.
+ */
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireRole("delivery", "admin");
+    if ("response" in auth) return auth.response;
 
-    await dbConnect();
-    const deliveryUser = await User.findOne({ email: session.user.email });
-    if (!deliveryUser || (deliveryUser.role !== 'delivery' && deliveryUser.role !== 'admin')) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const body = await readJsonObject(request);
+    const orderId = body?.orderId;
+    if (!isObjectId(orderId)) return badRequest("Order ID required");
+    if (body?.status !== "delivered") return badRequest("Riders can only mark an order as delivered");
 
-    const { orderId, status, paymentStatus } = await request.json();
-
-    const order = await Order.findOne({ _id: orderId, assignedTo: deliveryUser._id });
-    if (!order) {
-      return NextResponse.json({ error: "Order not found or not assigned to you" }, { status: 404 });
+    const result = await transitionOrder(orderId, "delivered", { filter: { assignedTo: auth.user.id } });
+    if ("error" in result) {
+      return jsonError(result.status === 404 ? "Order not found or not assigned to you" : result.error, result.status);
     }
-
-    if (status) {
-      order.status = status;
-      if (status === 'delivered') {
-        order.deliveredAt = new Date();
-        order.paymentStatus = 'paid'; // Auto-mark as paid on delivery for COD/Logic
-      }
-    }
-    
-    if (paymentStatus) {
-      order.paymentStatus = paymentStatus;
-    }
-
-    await order.save();
-    return NextResponse.json({ message: "Order updated successfully", order });
-  } catch (error: any) {
-    console.error("Delivery API PATCH Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Order updated successfully", order: result.order });
+  } catch (error) {
+    return serverError(error, "Delivery order update error");
   }
 }

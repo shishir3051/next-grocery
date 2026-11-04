@@ -23,13 +23,17 @@ FreshBasket is a premium, high-performance e-commerce solution built with **Next
 
 - **Framework**: Next.js 16 (App Router + Server Components)
 - **Database**: MongoDB with Mongoose ODM
-- **Authentication**: NextAuth.js
-- **Styling**: Vanilla CSS + Tailwind-utility principles
+- **Authentication**: NextAuth.js (credentials, email verification, password reset)
+- **Payments**: Cash on delivery, wallet credit, SSLCommerz
+- **Styling**: Tailwind CSS 4
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
-- **Internationalization**: Full English/Bengali localization
+- **AI search**: understands English, Banglish and Bangla queries
 
 ## 🚀 Getting Started
+
+Requirements: Node.js 20.9 or newer, a MongoDB database (MongoDB Atlas free tier works).
+The full clean-machine walkthrough (including a local MongoDB option) is in [HowToSetup.md](HowToSetup.md).
 
 1. **Clone & Install**:
    ```bash
@@ -37,14 +41,12 @@ FreshBasket is a premium, high-performance e-commerce solution built with **Next
    ```
 
 2. **Environment Setup**:
-   Create a `.env` file with:
-   - `MONGODB_URI` (special characters in the password must be URL-encoded)
-   - `NEXTAUTH_URL`, `NEXTAUTH_SECRET`
-   - `GEMINI_API_KEY` (optional, for AI search and recipes; get one at aistudio.google.com and never commit or share it). Without a working key, search falls back to keyword matching and recipes to a curated list. `GEMINI_MODEL` optionally overrides the model (default `gemini-2.5-flash`).
-   - `BARIKOI_API_KEY` (optional, server-only). Without it, address search and reverse lookup use OpenStreetMap Nominatim.
-   - `NEXT_PUBLIC_MAP_TILE_URL`, `NEXT_PUBLIC_MAP_TILE_ATTRIBUTION` (optional). The map uses OpenStreetMap tiles by default; set these to use a provider such as MapTiler or Stadia for production traffic.
-   - `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD`, `IS_LIVE`, `NEXT_PUBLIC_BASE_URL` (card payments)
-   - `EMAIL_USER`, `EMAIL_PASS` (verification and password-reset emails; required in production. In development, leaving them empty logs the codes to the server console instead.)
+   ```bash
+   cp .env.example .env.local
+   ```
+   Then fill in the values. [`.env.example`](.env.example) explains each one:
+   - **Required:** `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL`, `NEXTAUTH_SECRET`, and `EMAIL_USER` / `EMAIL_PASS` in production (in development the codes are printed to the server console).
+   - **Optional:** `SSLCOMMERZ_*` + `IS_LIVE` (online payments), `GEMINI_API_KEY` (AI search and recipes; without it, keyword search and curated recipes are used), `BARIKOI_API_KEY` (address search; OpenStreetMap otherwise), `NEXT_PUBLIC_MAP_TILE_URL` (map tiles).
 
 3. **Create the first admin**:
    Register and verify an account in the app, then run:
@@ -60,6 +62,14 @@ FreshBasket is a premium, high-performance e-commerce solution built with **Next
    ```bash
    npm run dev
    ```
+
+## 🌍 Deployment
+
+Deploy to **Vercel** or with **Docker on a VPS** (Dockerfile and `docker-compose.yml` included). Step-by-step instructions, reverse-proxy config and a post-deploy checklist are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## 🛡 Security
+
+Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers. Details: [docs/SECURITY.md](docs/SECURITY.md). Codebase guide for developers and AI agents: [AGENTS.md](AGENTS.md).
 
 ## 📡 Core API Routes
 

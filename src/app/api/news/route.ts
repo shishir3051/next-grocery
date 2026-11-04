@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { News } from '@/models/News';
+import { serverError } from '@/lib/http';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  await dbConnect();
   try {
-    const articles = await News.find({ isPublished: true }).sort({ createdAt: -1 });
+    await dbConnect();
+    const articles = await News.find({ isPublished: true }).sort({ createdAt: -1 }).lean();
     return NextResponse.json({ articles });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return serverError(error, 'News list error');
   }
 }

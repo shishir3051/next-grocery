@@ -9,9 +9,10 @@ import {
   RESET_MAX_CODES_PER_WINDOW,
   RESET_MAX_FAILURES_PER_WINDOW,
 } from "@/lib/otp";
-import { readJsonObject, rollResetWindow } from "@/lib/passwordReset";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { rollResetWindow } from "@/lib/passwordReset";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
+import { normalizeEmail } from "@/lib/validation";
+import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 
 /**
  * Step 1 of "Forgot password?": email a 6-digit reset code.
@@ -27,17 +28,19 @@ const GENERIC_RESPONSE = {
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = await checkRateLimit(clientKey(request, "forgot-password"), 10, 60 * 60 * 1000);
+    if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many requests. Please try again later.");
+
     const body = await readJsonObject(request);
-    const email = body?.email;
 
     // Strict type check also blocks NoSQL operator injection like { "email": { "$ne": null } }
-    if (typeof email !== "string" || email.length > 254 || !EMAIL_PATTERN.test(email.trim())) {
+    const normalizedEmail = normalizeEmail(body?.email);
+    if (!normalizedEmail) {
       return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
     }
 
     await dbConnect();
 
-    const normalizedEmail = email.trim();
     const account = { email: normalizedEmail, isVerified: true };
     await rollResetWindow(account);
 

@@ -4,17 +4,23 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Coupon } from "@/models/Coupon";
 import { computeCouponDiscount } from "@/lib/orders";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { code, subtotal } = await request.json();
+    // Stops guessing coupon codes by brute force.
+    const limit = await checkRateLimit(`coupon-validate:${session.user.id}`, 20, 10 * 60 * 1000);
+    if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many coupon attempts. Please wait a few minutes.");
 
-    if (typeof code !== 'string' || !code || typeof subtotal !== 'number') {
+    const { code, subtotal } = (await readJsonObject(request)) ?? {};
+
+    if (typeof code !== 'string' || !code || code.length > 40 || typeof subtotal !== 'number' || !Number.isFinite(subtotal) || subtotal < 0) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 

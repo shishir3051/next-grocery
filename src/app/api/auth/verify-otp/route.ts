@@ -3,24 +3,39 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { hashOtp, otpMatches, OTP_MAX_ATTEMPTS } from "@/lib/otp";
+import { normalizeEmail } from "@/lib/validation";
+import { checkRateLimit, clientKey } from "@/lib/rateLimit";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
 
 const REFERRAL_REWARD = 50;
+const HOUR = 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, otp, password } = await request.json();
+    const { email, otp, password } = (await readJsonObject(request)) ?? {};
 
     // Strict type checks block NoSQL operator injection like { "email": { "$ne": null } }
-    if (typeof email !== "string" || typeof otp !== "string" || typeof password !== "string" || !email.trim() || !/^\d{6}$/.test(otp)) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail || typeof otp !== "string" || typeof password !== "string" || !/^\d{6}$/.test(otp)) {
       return NextResponse.json(
         { error: "Missing email or OTP" },
         { status: 400 }
       );
     }
 
+    // Per-code attempts are capped at 5; these caps stop guessing across many re-sent
+    // codes (per account) and across many accounts (per IP).
+    const [byIp, byAccount] = await Promise.all([
+      checkRateLimit(clientKey(request, "verify-otp"), 30, HOUR),
+      checkRateLimit(`verify-otp-account:${normalizedEmail}`, 15, HOUR),
+    ]);
+    if (!byIp.ok || !byAccount.ok) {
+      return tooManyRequests(Math.max(byIp.retryAfterSeconds, byAccount.retryAfterSeconds), "Too many attempts. Please try again later.");
+    }
+
     await dbConnect();
 
-    const user = await User.findOne({ email: email.trim() });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user || user.isVerified) {
       // Same response for both cases so this endpoint can't be used to probe accounts.
       return NextResponse.json(

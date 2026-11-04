@@ -3,7 +3,10 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { hashOtp, otpMatches, OTP_MAX_ATTEMPTS, RESET_MAX_FAILURES_PER_WINDOW } from "@/lib/otp";
-import { readJsonObject, rollResetWindow } from "@/lib/passwordReset";
+import { rollResetWindow } from "@/lib/passwordReset";
+import { readJsonObject, tooManyRequests } from "@/lib/http";
+import { normalizeEmail } from "@/lib/validation";
+import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 
 /**
  * One reply for every failure (no account, no code, expired, wrong code, too many tries),
@@ -18,11 +21,15 @@ const invalid = () => NextResponse.json({ error: INVALID_CODE }, { status: 400 }
  */
 export async function POST(request: NextRequest) {
   try {
+    const limit = await checkRateLimit(clientKey(request, "reset-password"), 30, 60 * 60 * 1000);
+    if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many attempts. Please try again later.");
+
     const body = await readJsonObject(request);
     const { email, otp, password } = body ?? {};
 
     // Strict type checks block NoSQL operator injection like { "email": { "$ne": null } }
-    if (typeof email !== "string" || typeof otp !== "string" || typeof password !== "string" || !email.trim() || email.length > 254 || !/^\d{6}$/.test(otp)) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail || typeof otp !== "string" || typeof password !== "string" || !/^\d{6}$/.test(otp)) {
       return NextResponse.json({ error: "Enter your email and the 6-digit code" }, { status: 400 });
     }
     if (password.length < 8 || password.length > 128) {
@@ -31,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    const user = await User.findOne({ email: email.trim() }).select("email resetOtp resetOtpExpiry");
+    const user = await User.findOne({ email: normalizedEmail }).select("email resetOtp resetOtpExpiry");
     if (!user || !user.resetOtp || !user.resetOtpExpiry || new Date() > new Date(user.resetOtpExpiry)) {
       return invalid();
     }
