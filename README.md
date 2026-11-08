@@ -95,4 +95,4 @@ Safeguards:
 
 ---
 
-*FreshBasket v1.0.0*
+*FreshBasket v1.1.0*
