@@ -6,6 +6,8 @@ FreshBasket is a complete online grocery store for Bangladesh, built with **Next
 
 **One-click demo logins, no password:** open the login page and choose **Admin demo**, **Customer** or **Rider**. Try the full flow: order as the customer, assign the order to the Demo Rider as the admin, then mark it delivered as the rider. The demo admin can open every page but only changes demo orders; real customers' personal data is masked.
 
+**Demo accounts** (live demo only, read-only except demo orders): `admin@demo.freshbasket.app` (admin), `customer@demo.freshbasket.app` (customer) and `rider@demo.freshbasket.app` (delivery rider). No password is needed on the live demo: use the one-click buttons. `npm run test:demo -- <url>` checks the whole flow and the role rules against a running demo (customer order, admin assigns the Demo Rider, rider delivers).
+
 Set up your own copy, including the demo accounts and the optional live-demo mode, with [HowToSetup.md](HowToSetup.md).
 
 ## ✅ Features (datasheet)
@@ -45,7 +47,7 @@ Rate-limited login and sign-up, hashed single-use codes, database-checked roles 
 
 ## 🚀 Getting Started
 
-Requirements: Node.js 20.9 or newer, a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough, including VPS and Docker, is in [HowToSetup.md](HowToSetup.md).
+Requirements: Node.js 22 LTS (pinned in `.nvmrc`; 20.9 or newer runs the app, `npm test` needs 22.18+), a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough, including VPS and Docker, is in [HowToSetup.md](HowToSetup.md).
 
 ```bash
 npm ci                         # install pinned dependencies
@@ -61,6 +63,8 @@ npm run dev                    # http://localhost:3000
 | `npm run promote-admin -- you@example.com` | Make a registered account an admin |
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` / `npm run lint` / `npm run audit:prod` | Checks |
+| `npm test` | Unit tests: checkout totals, coupons, order status rules and demo privacy (Node 22.18+) |
+| `npm run test:demo -- <url>` | API smoke test of the live-demo flow and role checks against a running server |
 
 Every environment variable is explained in [`.env.example`](.env.example). Required: `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL`, `NEXTAUTH_SECRET`, plus `EMAIL_USER` / `EMAIL_PASS` in production. Optional: SSLCommerz, Gemini, Google sign-in, Barikoi, map tiles.
 

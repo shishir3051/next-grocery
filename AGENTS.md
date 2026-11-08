@@ -21,6 +21,8 @@ npm run build        # production build
 npm run typecheck    # tsc --noEmit
 npm run lint         # eslint
 npm run audit:prod   # must report 0 vulnerabilities
+npm test             # unit tests in tests/ (Node 22.18+, built-in TypeScript support)
+npm run test:demo -- http://localhost:3000   # API smoke test of the demo flow (DEMO_MODE=true)
 npm run promote-admin -- user@example.com   # make a verified user an admin
 npm run normalize-emails [-- --apply]       # one-time lower-case email migration
 npm run db:setup     # indexes + sample data + demo accounts on a new database
@@ -91,7 +93,7 @@ scripts/                  one-off admin scripts (run with node, read .env.local)
 - Match the existing patterns; keep route handlers thin and put shared logic in `src/lib`.
 - `discountPrice` is the **sale price**, not an amount off. Use `getEffectivePrice()`.
 - Use `slugify()` for slugs (handles Bangla names).
-- Before finishing: `npm run typecheck`, `npm run lint` on changed files, `npm run build`.
+- Before finishing: `npm run typecheck`, `npm run lint` on changed files, `npm test`, `npm run build`.
 
 ## Domain notes
 

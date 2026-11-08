@@ -10,11 +10,20 @@ Cloud hosting on Vercel is covered in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 | Run it on a VPS with Node.js | 1 → 2 → 3 → 4 → 6A |
 | Run it on a VPS with Docker | 6B (needs only Docker) |
 
+**Quick checklist** (each step is explained below):
+
+1. Node.js 22 LTS, then `npm ci` (exact versions from `package-lock.json`).
+2. `cp .env.example .env.local` and set `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL` and `NEXTAUTH_SECRET`.
+3. Database, in this order: `npm run db:indexes`, then `npm run db:seed -- --demo-users` (`npm run db:setup` does both).
+4. First admin: register in the app, then `npm run promote-admin -- you@example.com` (or log in as the demo admin).
+5. `npm run build`, then `npm start` (or `npm run dev` while developing).
+6. Brand it: store name and delivery fees in *Admin → Settings*; logo, colours and texts in section 8.
+
 ## 1. Prerequisites
 
 | Tool | Version | Check |
 |---|---|---|
-| Node.js | 20.9 or newer (22 LTS recommended) | `node -v` |
+| Node.js | 22 LTS recommended (pinned in `.nvmrc`); 20.9 or newer runs the app; `npm test` needs 22.18+ | `node -v` |
 | npm | 10 or newer (comes with Node) | `npm -v` |
 | MongoDB | MongoDB Atlas (free tier) **or** MongoDB 6+ on your machine/server | — |
 
@@ -144,6 +153,8 @@ Update later: `git pull && npm ci && npm run build && pm2 restart freshbasket`.
 ## 6B. Production on a VPS with Docker
 
 Requirements: Docker with the Compose plugin. Node.js is not needed on the server.
+The `Dockerfile` builds with `NEXT_OUTPUT=standalone`, which switches `next.config.ts` to Next.js's
+self-contained server output; the plain `npm run build` in sections 5 and 6A doesn't use it.
 
 ```bash
 cd freshbasket
@@ -185,6 +196,17 @@ npm run audit:prod    # production dependencies: 0 vulnerabilities
 In the browser: log in as the demo customer → add a product to the cart → checkout with
 *Cash on Delivery* → the order appears under *My Orders*. Log in as the demo admin → *Admin →
 Orders* → assign the order to the demo rider → log in as the rider → *Mark delivered*.
+
+## 8. Branding: make it your store
+
+| What | Where |
+|---|---|
+| Store name, support email, delivery fee, free-delivery minimum, maintenance mode | *Admin → Settings* (no code change) |
+| Home page banners and offers | *Admin → Hero Banners* and *Admin → Coupons* |
+| Logo and name in the header and footer | `src/components/layout/Navbar.tsx`, `src/components/layout/Footer.tsx` |
+| Browser tab icon and app icon | `src/app/icon.svg`, `src/app/apple-icon.png` |
+| Colours | the `brand-*` and `accent-*` tokens in the `@theme` block of `src/app/globals.css` |
+| Page title and description (SEO) | `metadata` in `src/app/layout.tsx` |
 
 ## Public live demo (optional)
 

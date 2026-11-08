@@ -119,6 +119,11 @@ through: otherwise a made-up header gets a fresh per-IP limit on every request (
 `npm run audit:prod` must report 0 vulnerabilities for production dependencies before a
 release. Remaining advisories are in development-only lint tooling.
 
+- Last run for 1.1.0 (2026-11-08): `npm audit --omit=dev` → **found 0 vulnerabilities**.
+- `next-auth` stays on 4.x on purpose: 4.24.15 is the current stable release on npm (`latest`),
+  while Auth.js v5 is still a beta (`5.0.0-beta.32`). Update within 4.x for security fixes.
+- Every dependency is pinned by `package-lock.json`; install with `npm ci`.
+
 ## Known limitations
 
 - `script-src` allows `'unsafe-inline'` because Next.js emits inline bootstrap scripts; a

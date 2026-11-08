@@ -10,6 +10,9 @@ All notable changes to FreshBasket. Versions follow [Semantic Versioning](https:
   the full flow, masking of real customers' data for demo accounts, and self-cleaning demo
   orders that never touch real stock, coupons or wallet credit.
 - Sample demo customer messages in `database/seed.js`.
+- Automated tests: `npm test` (unit tests for checkout totals, coupons, order status rules and
+  demo privacy) and `npm run test:demo` (API smoke test of the demo flow and role checks).
+- `.nvmrc` pins Node.js 22 LTS; setup guide has a quick checklist and a branding section.
 
 ### Changed
 - Adding to the cart no longer opens the cart drawer: a short "Added to cart · View cart"
