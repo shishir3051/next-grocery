@@ -113,10 +113,10 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
   const submitLabel = isEditing ? "Save changes" : formData.isPublished ? "Publish story" : "Save draft";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-3">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Content fields (left, wide) */}
-        <section aria-labelledby="news-content-title" className={cn(PANEL_CLASS, "space-y-5 p-4 sm:p-6 lg:col-span-2")}>
+        <section aria-labelledby="news-content-title" className={cn(PANEL_CLASS, "space-y-4 p-4 lg:col-span-2")}>
           <h3 id="news-content-title" className="text-base font-semibold text-slate-900">Content</h3>
 
           <div>
@@ -144,7 +144,7 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
               value={formData.excerpt}
               onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
             />
-            <div id="news-excerpt-help" className={cn(HELP_CLASS, "flex justify-between gap-4")}>
+            <div id="news-excerpt-help" className={cn(HELP_CLASS, "flex justify-between gap-3")}>
               <span>Shown on the news list and story cards. One or two sentences work best.</span>
               <span className="whitespace-nowrap tabular-nums">{formData.excerpt.length} characters</span>
             </div>
@@ -169,7 +169,7 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
         </section>
 
         {/* Meta + image (right) */}
-        <section aria-labelledby="news-details-title" className={cn(PANEL_CLASS, "h-fit space-y-5 p-4 sm:p-6")}>
+        <section aria-labelledby="news-details-title" className={cn(PANEL_CLASS, "h-fit space-y-4 p-4")}>
           <h3 id="news-details-title" className="text-base font-semibold text-slate-900">Details</h3>
 
           <div>
@@ -227,10 +227,10 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
               ) : (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex cursor-pointer flex-col items-center px-4 py-8 text-center"
+                  className="flex cursor-pointer flex-col items-center px-3 py-6 text-center"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm">
-                    <ImageIcon size={22} aria-hidden="true" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm">
+                    <ImageIcon size={18} aria-hidden="true" />
                   </div>
                   <p className="mt-3 text-sm font-medium text-slate-700">Drag an image here</p>
                   <p className="text-xs text-slate-500">or choose a file from your computer</p>
@@ -243,7 +243,7 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   aria-describedby="news-image-help"
-                  className="h-10"
+                  className="h-9"
                 >
                   <Upload size={16} aria-hidden="true" />
                   {previewSrc ? "Replace image" : "Choose image"}
@@ -264,7 +264,7 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
           </div>
 
           {/* Publish switch: a real button so it works with the keyboard; the label toggles it too */}
-          <div className="flex items-start justify-between gap-4 border-t border-slate-200 pt-5">
+          <div className="flex items-start justify-between gap-3 border-t border-slate-200 pt-4">
             <div>
               <label htmlFor="news-published" className="block cursor-pointer text-sm font-medium text-slate-700">
                 Published
@@ -280,7 +280,7 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
               aria-checked={formData.isPublished}
               aria-describedby="news-published-help"
               onClick={() => setFormData({ ...formData, isPublished: !formData.isPublished })}
-              className="flex h-10 flex-shrink-0 items-center"
+              className="flex h-9 flex-shrink-0 items-center"
             >
               <span
                 className={cn(
@@ -303,7 +303,7 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
       {/* Sticky action bar: stays in reach while scrolling through long content */}
       {/* One row on phones too, so the bar never covers much of the form; the status badge
           is hidden below sm because the Published switch already shows the state there */}
-      <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-md backdrop-blur">
+      <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-md backdrop-blur">
         <span className={cn(BADGE_CLASS, formData.isPublished ? BADGE_TONES.success : BADGE_TONES.neutral, "hidden sm:inline-flex")}>
           <span
             className={cn("h-1.5 w-1.5 rounded-full", formData.isPublished ? "bg-success-500" : "bg-slate-400")}
@@ -312,10 +312,10 @@ export default function NewsForm({ initialData, isEditing = false }: NewsFormPro
           {formData.isPublished ? "Published" : "Draft"}
         </span>
         <div className="flex flex-1 gap-3 sm:flex-none">
-          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => router.push("/admin/news")}>
+          <Button variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => router.push("/admin/news")}>
             Cancel
           </Button>
-          <Button type="submit" loading={loading} className="flex-1 whitespace-nowrap sm:flex-none">
+          <Button type="submit" size="sm" loading={loading} className="flex-1 whitespace-nowrap sm:flex-none">
             {!loading && <Save size={16} aria-hidden="true" />}
             {submitLabel}
           </Button>

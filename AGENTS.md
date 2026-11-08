@@ -23,6 +23,7 @@ npm run lint         # eslint
 npm run audit:prod   # must report 0 vulnerabilities
 npm run promote-admin -- user@example.com   # make a verified user an admin
 npm run normalize-emails [-- --apply]       # one-time lower-case email migration
+npm run db:setup     # indexes + sample data + demo accounts on a new database
 ```
 
 ## Layout
@@ -46,7 +47,8 @@ src/
     auth.ts               NextAuth options, login rate limiting, session re-validation
     googleAccount.ts      Google sign-in: find/link/create the account safely
     email.ts              Nodemailer: codes, plain emails (escapes customer text)
-    authGuard.ts          requireRole() — the authorization check for every protected API
+    authGuard.ts          requireRole() for reads, requireRoleForWrite() for changes (blocks demo accounts)
+    demo.ts, demoMask.ts  live-demo mode (DEMO_MODE): demo accounts, masking of personal data
     validation.ts         input validators (strings, numbers, ObjectIds, images, slugs, email)
     http.ts               JSON body reader and error responses (never leak internals)
     rateLimit.ts          in-memory + MongoDB shared rate limiter
@@ -58,7 +60,8 @@ src/
     pricing.ts            getEffectivePrice() — the only place a product's price is computed
   models/                 Mongoose schemas (User, Product+Category, Order, Coupon, News, HeroSlide, Settings, RateLimit)
   proxy.ts                redirects for /admin and /delivery (UX only; APIs re-check)
-docs/                     DEPLOYMENT.md, SECURITY.md, audit and improvement plan
+database/                 indexes.js, seed.js (npm run db:setup), connect.js helper
+docs/                     api.md, DEPLOYMENT.md, SECURITY.md
 scripts/                  one-off admin scripts (run with node, read .env.local)
 ```
 
@@ -66,7 +69,9 @@ scripts/                  one-off admin scripts (run with node, read .env.local)
 
 **Security (non-negotiable; see docs/SECURITY.md):**
 - Protected API routes start with `const auth = await requireRole("admin")` (or `"delivery"`,
-  or `requireUser()`), then `if ("response" in auth) return auth.response;`.
+  or `requireUser()`), then `if ("response" in auth) return auth.response;`. Handlers that
+  change data use `requireRoleForWrite(...)` instead, so live-demo accounts stay read-only;
+  GET handlers returning customers' personal data mask it when `isDemoRestricted(auth.user)`.
 - Read bodies with `readJsonObject()`. Copy only expected fields, each validated with
   `lib/validation.ts`. Never spread a request body into `create`/`update`.
 - Never put a value from the request into a Mongo filter unless it is a validated string or

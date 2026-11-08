@@ -4,6 +4,7 @@ import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { hashOtp, otpMatches, OTP_MAX_ATTEMPTS } from "@/lib/otp";
 import { normalizeEmail } from "@/lib/validation";
+import { isDemoEmail } from "@/lib/demo";
 import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 import { readJsonObject, tooManyRequests } from "@/lib/http";
 
@@ -21,6 +22,10 @@ export async function POST(request: NextRequest) {
         { error: "Missing email or OTP" },
         { status: 400 }
       );
+    }
+
+    if (isDemoEmail(normalizedEmail)) {
+      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
     }
 
     // Per-code attempts are capped at 5; these caps stop guessing across many re-sent

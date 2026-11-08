@@ -66,7 +66,7 @@ export default function ProductDetailsDialog({ product, imageUrl, open, onClose 
 
   const handleAddToCart = () => {
     if (maxAddable <= 0) return;
-    addItem({ ...product, price: finalPrice }, shownQty); // atomic, stock-clamped; opens the cart drawer
+    addItem({ ...product, price: finalPrice }, shownQty); // atomic, stock-clamped; confirms with a toast
     setQuantity(1);
     onClose();
   };

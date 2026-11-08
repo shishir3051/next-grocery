@@ -194,6 +194,10 @@ export default function CheckoutPage() {
     !address.phone && "phone number",
   ].filter(Boolean) as string[];
 
+  // Live demo: every address field points to the note saying nothing typed there is kept,
+  // so screen-reader users who move through the form by Tab hear it too.
+  const demoNoteId = session?.user?.isDemo ? "checkout-demo-note" : undefined;
+
   const initPayment = async () => {
     setIsPlacingOrder(true);
     try {
@@ -359,6 +363,13 @@ export default function CheckoutPage() {
                 <h2 id="address-heading" className="font-semibold text-slate-900">Delivery address</h2>
               </div>
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Live demo: the account is shared, so the server stores a sample address and no note instead (lib/demoOrder.ts). */}
+                {demoNoteId && (
+                  <p id={demoNoteId} className="md:col-span-2 flex items-start gap-1.5 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                    <Info size={14} className="mt-px flex-shrink-0 text-slate-400" aria-hidden="true" />
+                    Shared demo account: your address and delivery note aren&apos;t saved. The order uses a sample address.
+                  </p>
+                )}
                 <div className="md:col-span-2">
                   <label htmlFor="checkout-street" className={LABEL_CLASS}>
                     Street address <span className="text-danger-600" aria-hidden="true">*</span>
@@ -368,6 +379,7 @@ export default function CheckoutPage() {
                     type="text"
                     autoComplete="street-address"
                     aria-required="true"
+                    aria-describedby={demoNoteId}
                     value={address.street}
                     onChange={(e) => setAddress({ ...address, street: e.target.value })}
                     placeholder="House 12, Road 4, Banani"
@@ -383,6 +395,7 @@ export default function CheckoutPage() {
                     type="text"
                     autoComplete="address-level2"
                     aria-required="true"
+                    aria-describedby={demoNoteId}
                     value={address.city}
                     onChange={(e) => setAddress({ ...address, city: e.target.value })}
                     placeholder="Dhaka"
@@ -399,6 +412,7 @@ export default function CheckoutPage() {
                     inputMode="tel"
                     autoComplete="tel"
                     aria-required="true"
+                    aria-describedby={demoNoteId}
                     value={address.phone}
                     onChange={(e) => setAddress({ ...address, phone: e.target.value })}
                     placeholder="017xxxxxxxx"
@@ -414,6 +428,7 @@ export default function CheckoutPage() {
                     type="text"
                     inputMode="numeric"
                     autoComplete="postal-code"
+                    aria-describedby={demoNoteId}
                     value={address.zipCode}
                     onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
                     placeholder="1213"
@@ -431,7 +446,7 @@ export default function CheckoutPage() {
                     maxLength={500}
                     placeholder="Any special instructions, e.g. a landmark or gate code"
                     rows={2}
-                    aria-describedby="checkout-note-count"
+                    aria-describedby={demoNoteId ? `${demoNoteId} checkout-note-count` : "checkout-note-count"}
                     className={cn(INPUT_CLASS, "resize-none")}
                   />
                   <p id="checkout-note-count" className="mt-1 text-right text-xs text-slate-500">{note.length}/500</p>

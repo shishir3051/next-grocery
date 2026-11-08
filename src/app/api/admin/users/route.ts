@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
-import { requireRole, PRIVATE_USER_FIELDS, type Role } from "@/lib/authGuard";
+import { isDemoRestricted, requireRole, requireRoleForWrite, PRIVATE_USER_FIELDS, type Role } from "@/lib/authGuard";
+import { maskUser } from "@/lib/demoMask";
 import { badRequest, isDuplicateKeyError, notFound, readJsonObject, serverError } from "@/lib/http";
 import { isObjectId, normalizeEmail, requiredString } from "@/lib/validation";
 
@@ -13,7 +14,7 @@ const isRole = (value: unknown): value is Role => typeof value === "string" && (
 /** Creates a verified account with a chosen role (e.g. a delivery rider). Admin only. */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const body = await readJsonObject(request);
@@ -56,7 +57,9 @@ export async function GET() {
 
     // Never send password hashes or one-time-code hashes, even to admins.
     const users = await User.find({}).select(PRIVATE_USER_FIELDS).sort({ createdAt: -1 }).lean();
-    return NextResponse.json({ users });
+    // Live demo: real customers' names, emails, photos and addresses are masked.
+    const visible = isDemoRestricted(auth.user) ? users.map(u => maskUser(u as Record<string, unknown>)) : users;
+    return NextResponse.json({ users: visible });
   } catch (error) {
     return serverError(error, "Admin users fetch error");
   }
@@ -65,7 +68,7 @@ export async function GET() {
 /** Changes a user's role. */
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const body = await readJsonObject(request);
@@ -90,7 +93,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const id = request.nextUrl.searchParams.get("id");

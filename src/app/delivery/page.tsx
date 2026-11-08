@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import DemoModeBanner from "@/components/auth/DemoModeBanner";
 
 export default function DeliveryDashboard() {
   const { data: session, status } = useSession();
@@ -98,6 +99,7 @@ export default function DeliveryDashboard() {
       </header>
 
       <main className="px-4 sm:px-6 py-6 space-y-4 max-w-2xl mx-auto">
+        {session?.user?.isDemo && <DemoModeBanner area="rider" />}
         {orders.length === 0 ? (
           <div className="h-[60vh] flex flex-col items-center justify-center text-center gap-4">
             <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">

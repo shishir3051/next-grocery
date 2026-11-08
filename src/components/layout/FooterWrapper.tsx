@@ -11,7 +11,8 @@ export default function FooterWrapper() {
   // Only the home page currently features the fixed categories sidebar
   const showSidebarOffset = pathname === "/";
 
-  if (isAdmin || isAuth || pathname === "/checkout") return null;
+  // The /showcase landing page renders its own footer.
+  if (isAdmin || isAuth || pathname === "/checkout" || pathname?.startsWith("/showcase")) return null;
 
   return <Footer showSidebarOffset={showSidebarOffset} />;
 }

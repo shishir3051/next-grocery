@@ -16,8 +16,11 @@ import {
   creditWallet,
 } from "@/lib/orders";
 import { roundMoney } from "@/lib/pricing";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import { readJsonObject, tooManyRequests } from "@/lib/http";
+import { isDemoModeEnabled } from "@/lib/demo";
+import { demoShippingAddress } from "@/lib/demoOrder";
+import { cleanupDemoOrders } from "@/lib/orderStatus";
 
 const MAX_OPEN_COD_ORDERS = 5;
 
@@ -30,14 +33,31 @@ export async function POST(request: NextRequest) {
     }
     const userId = session.user.id;
 
+    // Live demo: the demo customer is shared by every visitor. Its orders never reserve
+    // real stock, coupon uses or wallet credit, and old ones are tidied away first.
+    const isDemoOrder = Boolean(session.user.isDemo) && isDemoModeEnabled();
+
     // Abuse limits: COD orders reserve stock immediately, so one account must not be
     // able to tie up the inventory with a flood of orders it never intends to receive.
-    const limit = await checkRateLimit(`order:${userId}`, 10, 10 * 60 * 1000);
+    // The shared demo customer is limited per visitor, so one visitor can't block the rest.
+    const limitKey = isDemoOrder ? `order-demo:${clientIp(request.headers)}` : `order:${userId}`;
+    const limit = await checkRateLimit(limitKey, 10, 10 * 60 * 1000);
     if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many orders in a short time. Please wait a few minutes.");
+
+    // A new IP must not mean unlimited demo orders, so all demo visitors together also share
+    // one ceiling (six visitors' worth). Checked second, so requests refused above don't count.
+    if (isDemoOrder) {
+      const overall = await checkRateLimit(`order-demo-all:${userId}`, 60, 10 * 60 * 1000);
+      if (!overall.ok) return tooManyRequests(overall.retryAfterSeconds, "The live demo is busy right now. Please try again in a few minutes.");
+    }
 
     await dbConnect();
 
-    const openCodOrders = await Order.countDocuments({ user: userId, paymentProvider: 'cod', status: 'pending' });
+    if (isDemoOrder) await cleanupDemoOrders(userId);
+
+    // The cap protects reserved stock, which demo orders never take; on the shared demo
+    // account it would only let some visitors' orders block everyone else's checkout.
+    const openCodOrders = isDemoOrder ? 0 : await Order.countDocuments({ user: userId, paymentProvider: 'cod', status: 'pending' });
     if (openCodOrders >= MAX_OPEN_COD_ORDERS) {
       return NextResponse.json({
         error: `You already have ${MAX_OPEN_COD_ORDERS} orders waiting to be confirmed. Please wait for them to be processed.`,
@@ -63,21 +83,29 @@ export async function POST(request: NextRequest) {
     if (!quoted.ok) return NextResponse.json({ error: quoted.error }, { status: quoted.status });
     const quote = quoted.value;
 
+    // Every demo visitor sees the demo customer's orders, so a demo order stores a sample
+    // address and no note, never what was typed (the typed address is still validated above).
+    const shippingAddress = isDemoOrder ? demoShippingAddress() : parsed.value.shippingAddress;
+
     // 2. Apply side effects atomically, undoing earlier steps if a later one fails.
     //    (A MongoDB transaction would be cleaner; this works without a replica set.)
-    if (!(await reserveStock(quote.items))) {
+    //    Demo orders skip all three reservations (stock, coupon, wallet).
+    const stockItems = isDemoOrder ? [] : quote.items;
+    const couponId = isDemoOrder ? null : quote.couponId;
+
+    if (!(await reserveStock(stockItems))) {
       return NextResponse.json({ error: "Some items just went out of stock. Please review your cart." }, { status: 409 });
     }
 
-    if (quote.couponId && !(await consumeCoupon(quote.couponId))) {
-      await releaseStock(quote.items);
+    if (couponId && !(await consumeCoupon(couponId))) {
+      await releaseStock(stockItems);
       return NextResponse.json({ error: "This coupon has reached its usage limit." }, { status: 409 });
     }
 
-    const walletAmount = parsed.value.useWallet ? await debitWallet(userId, quote.total) : 0;
+    const walletAmount = parsed.value.useWallet && !isDemoOrder ? await debitWallet(userId, quote.total) : 0;
     if (walletAmount === null) {
-      await releaseStock(quote.items);
-      if (quote.couponId) await releaseCoupon(quote.couponId);
+      await releaseStock(stockItems);
+      if (couponId) await releaseCoupon(couponId);
       return NextResponse.json({ error: "Your wallet balance changed. Please try again." }, { status: 409 });
     }
 
@@ -88,22 +116,23 @@ export async function POST(request: NextRequest) {
         user: userId,
         items: quote.items,
         totalAmount: amountToPay,
-        shippingAddress: parsed.value.shippingAddress,
+        shippingAddress,
         status: 'pending',
         paymentProvider: 'cod',
         // Fully covered by the wallet means nothing is left to collect on delivery.
         paymentStatus: amountToPay === 0 ? 'paid' : 'unpaid',
         paidAt: amountToPay === 0 ? new Date() : null,
-        deliveryNote: parsed.value.deliveryNote,
+        deliveryNote: isDemoOrder ? null : parsed.value.deliveryNote,
         couponCode: quote.couponCode,
         discountAmount: quote.discount,
         walletAmount,
+        isDemo: isDemoOrder,
       });
 
       return NextResponse.json({ success: true, orderId: order._id }, { status: 201 });
     } catch (error) {
-      await releaseStock(quote.items);
-      if (quote.couponId) await releaseCoupon(quote.couponId);
+      await releaseStock(stockItems);
+      if (couponId) await releaseCoupon(couponId);
       await creditWallet(userId, walletAmount);
       throw error;
     }

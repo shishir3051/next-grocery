@@ -5,8 +5,11 @@ import Button from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 
 interface SmartSearchProps {
-  /** Products found (serialised product documents); an empty array means "nothing matched". */
-  onResults: (results: unknown[]) => void;
+  /**
+   * Products found (serialised product documents); an empty array means "nothing matched".
+   * `query` is the text that was searched, so the page can show what the results are for.
+   */
+  onResults: (results: unknown[], query: string) => void;
   onReset: () => void;
   hasResults?: boolean;
   location?: string;
@@ -116,7 +119,7 @@ export default function SmartSearch({ onResults, onReset, hasResults, location =
       }
 
       const products = Array.isArray(data.products) ? data.products : [];
-      onResults(products); // [] lets the home page show its "no products" state
+      onResults(products, trimmed); // [] lets the home page show its "no products" state
       setResult({
         count: products.length,
         suggestion: typeof data.suggestion === 'string' ? data.suggestion : '',

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ContactMessage, CONTACT_STATUSES, contactReference } from "@/models/ContactMessage";
-import { requireRole } from "@/lib/authGuard";
+import { demoReadOnly, isDemoRestricted, requireRole, requireRoleForWrite } from "@/lib/authGuard";
+import { isDemoEmail } from "@/lib/demo";
+import { maskMessage } from "@/lib/demoMask";
 import { badRequest, jsonError, notFound, readJsonObject, serverError } from "@/lib/http";
 import { isObjectId, requiredString } from "@/lib/validation";
 import { sendPlainEmail } from "@/lib/email";
@@ -22,6 +24,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     const body = await readJsonObject(request);
     if (!body) return badRequest();
+
+    // Live demo: no emails are sent, and only demo messages change. Opening a real
+    // customer's message (which marks it read) quietly changes nothing.
+    const restricted = isDemoRestricted(auth.user);
+    if (restricted && body.reply !== undefined) return demoReadOnly();
 
     if (body.reply !== undefined) {
       const reply = requiredString(body.reply, 5000);
@@ -69,9 +76,20 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (typeof body.status !== "string" || !(CONTACT_STATUSES as readonly string[]).includes(body.status)) {
       return badRequest("Invalid status");
     }
+
+    if (restricted) {
+      const current = await ContactMessage.findById(id).lean<{ email: string }>();
+      if (!current) return notFound("Message not found");
+      if (!isDemoEmail(current.email)) {
+        return NextResponse.json({ message: "Not changed in the demo", contact: maskMessage(current) });
+      }
+    }
+
     const updated = await ContactMessage.findByIdAndUpdate(id, { $set: { status: body.status } }, { new: true }).lean();
     if (!updated) return notFound("Message not found");
-    return NextResponse.json({ message: "Status updated", contact: updated });
+    // Live demo: a demo message still hides the names of the staff who replied to it.
+    const contact = restricted ? maskMessage(updated as Record<string, unknown>) : updated;
+    return NextResponse.json({ message: "Status updated", contact });
   } catch (error) {
     return serverError(error, "Admin message update error");
   }
@@ -79,7 +97,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const { id } = await params;

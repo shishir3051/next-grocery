@@ -223,9 +223,9 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & toolbar */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Inventory management</h2>
           <p className="text-sm text-slate-500">Control your stock, pricing, and product visibility.</p>
@@ -245,6 +245,7 @@ export default function AdminProductsPage() {
               />
             </div>
             <Button
+              size="sm"
               onClick={() => { setEditingProduct(null); setIsModalOpen(true); }}
               className="whitespace-nowrap"
             >
@@ -259,7 +260,7 @@ export default function AdminProductsPage() {
           <span className="sr-only">Loading products…</span>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[900px]">
               <thead>
@@ -275,14 +276,14 @@ export default function AdminProductsPage() {
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {paginatedProducts.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
                       {searchTerm ? `No products match "${searchTerm}".` : "No products yet. Add your first product to get started."}
                     </td>
                   </tr>
                 )}
                 {paginatedProducts.map((product) => (
                   <tr key={product._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
                           {product.imageData || product.images?.[0] ? (
@@ -302,12 +303,12 @@ export default function AdminProductsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium">
                         {(typeof product.category === 'object' ? product.category?.name : product.category) || 'Uncategorized'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-900 tabular-nums">৳{product.price}</span>
                         {/* discountPrice is the sale price, so the saving is price - discountPrice */}
@@ -316,12 +317,12 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span className={cn("tabular-nums", product.stock < 10 ? "font-semibold text-danger-700" : "text-slate-700")}>
                         {product.stock}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       {product.stock > 0 ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2.5 py-0.5 text-xs font-medium text-success-700">
                           <Check size={12} strokeWidth={3} aria-hidden="true" /> In stock
@@ -332,14 +333,14 @@ export default function AdminProductsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => openEditModal(product)}
                           aria-label={`Edit ${product.name}`}
                           title="Edit"
-                          className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-700 transition-colors"
+                          className="flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-700 transition-colors"
                         >
                           <Edit3 size={16} aria-hidden="true" />
                         </button>
@@ -348,7 +349,7 @@ export default function AdminProductsPage() {
                           onClick={() => handleDelete(product._id)}
                           aria-label={`Delete ${product.name}`}
                           title="Delete"
-                          className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-danger-50 hover:text-danger-700 transition-colors"
+                          className="flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-danger-50 hover:text-danger-700 transition-colors"
                         >
                           <Trash2 size={16} aria-hidden="true" />
                         </button>
@@ -424,24 +425,24 @@ export default function AdminProductsPage() {
               className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 id="product-modal-title" className="text-lg font-semibold text-slate-900">
+              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h2 id="product-modal-title" className="text-base font-semibold text-slate-900">
                   {editingProduct ? "Edit product" : "Add new product"}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   aria-label="Close"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                  className="flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                 >
-                  <X size={20} aria-hidden="true" />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
               <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
                 {/* Scrollable fields; the action bar below stays visible */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="grid md:grid-cols-2 gap-5">
+                <div className="flex-1 overflow-y-auto p-5">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="product-name" className={LABEL_CLASS}>Product name</label>
                       <input id="product-name" required type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Organic red apples" className={INPUT_CLASS} />
@@ -461,7 +462,7 @@ export default function AdminProductsPage() {
                     <div>
                       <label htmlFor="product-discount" className={LABEL_CLASS}>Sale price (৳)</label>
                       <input id="product-discount" type="number" value={formData.discountPrice} onChange={(e) => setFormData({...formData, discountPrice: e.target.value})} placeholder="100" aria-describedby="product-discount-help" className={INPUT_CLASS} />
-                      <p id="product-discount-help" className="mt-1.5 text-xs text-slate-500">Optional. Leave empty if the product is not on sale.</p>
+                      <p id="product-discount-help" className="mt-1 text-xs text-slate-500">Optional. Leave empty if the product is not on sale.</p>
                     </div>
                     <div>
                       <label htmlFor="product-unit" className={LABEL_CLASS}>Unit</label>
@@ -473,7 +474,7 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5">
+                  <div className="mt-4">
                     <p id="product-image-label" className={LABEL_CLASS}>Product image</p>
                     {/* The remove button sits beside (not inside) the drop zone so the two controls are never nested */}
                     <div className="relative">
@@ -488,7 +489,7 @@ export default function AdminProductsPage() {
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                         className={cn(
-                          "relative cursor-pointer rounded-xl border-2 border-dashed transition-colors",
+                          "relative cursor-pointer rounded-lg border-2 border-dashed transition-colors",
                           isDragging
                             ? "border-brand-500 bg-brand-50"
                             : formData.imageData
@@ -498,8 +499,8 @@ export default function AdminProductsPage() {
                       >
                         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" tabIndex={-1} onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
                         {formData.imageData ? (
-                          <div className="flex items-center gap-4 p-4 pr-16">
-                            <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200 bg-white">
+                          <div className="flex items-center gap-3 p-3 pr-14">
+                            <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200 bg-white">
                               <Image src={formData.imageData} alt="Product image preview" fill className="object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -508,7 +509,7 @@ export default function AdminProductsPage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                          <div className="flex flex-col items-center justify-center py-6 px-3 text-center">
                             <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3">
                               <Upload size={18} className="text-slate-500" aria-hidden="true" />
                             </div>
@@ -522,7 +523,7 @@ export default function AdminProductsPage() {
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, imageData: '' })); }}
                           aria-label="Remove image"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-danger-50 hover:text-danger-700 transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-danger-50 hover:text-danger-700 transition-colors"
                         >
                           <X size={16} aria-hidden="true" />
                         </button>
@@ -530,29 +531,29 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  <fieldset className="mt-5">
+                  <fieldset className="mt-4">
                     <legend className={LABEL_CLASS}>Labels</legend>
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                      <label className="flex min-h-10 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <label className="flex min-h-9 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
                         <input type="checkbox" className="h-5 w-5 cursor-pointer accent-brand-600" checked={formData.isOrganic} onChange={(e) => setFormData({...formData, isOrganic: e.target.checked})} />
                         Organic
                       </label>
-                      <label className="flex min-h-10 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
+                      <label className="flex min-h-9 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
                         <input type="checkbox" className="h-5 w-5 cursor-pointer accent-brand-600" checked={formData.isHalal} onChange={(e) => setFormData({...formData, isHalal: e.target.checked})} />
                         Halal
                       </label>
                     </div>
                   </fieldset>
 
-                  <div className="mt-5">
+                  <div className="mt-4">
                     <label htmlFor="product-description" className={LABEL_CLASS}>Description</label>
                     <textarea id="product-description" rows={3} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Describe the product's freshness, origin, etc." className={cn(INPUT_CLASS, "resize-none")} />
                   </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
-                  <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" loading={isLoading}>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-5 py-3">
+                  <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" size="sm" loading={isLoading}>
                     {!isLoading && <SaveIcon size={16} aria-hidden="true" />}
                     {editingProduct ? "Save changes" : "Create product"}
                   </Button>

@@ -6,6 +6,7 @@ import { hashOtp, otpMatches, OTP_MAX_ATTEMPTS, RESET_MAX_FAILURES_PER_WINDOW } 
 import { rollResetWindow } from "@/lib/passwordReset";
 import { readJsonObject, tooManyRequests } from "@/lib/http";
 import { normalizeEmail } from "@/lib/validation";
+import { isDemoEmail } from "@/lib/demo";
 import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 
 /**
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     if (!normalizedEmail || typeof otp !== "string" || typeof password !== "string" || !/^\d{6}$/.test(otp)) {
       return NextResponse.json({ error: "Enter your email and the 6-digit code" }, { status: 400 });
     }
+    if (isDemoEmail(normalizedEmail)) return invalid();
     if (password.length < 8 || password.length > 128) {
       return NextResponse.json({ error: "Password must be between 8 and 128 characters" }, { status: 400 });
     }

@@ -39,6 +39,9 @@ const OrderSchema = new Schema({
   assignedTo: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   dispatchedAt: { type: Date, default: null },
   deliveredAt: { type: Date, default: null },
+  // Placed by a live-demo account (lib/demo.ts): never reserves real stock or coupon uses,
+  // and is cleaned up automatically.
+  isDemo: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // Indexes to improve query performance for Dashboard analytics

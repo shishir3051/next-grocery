@@ -31,7 +31,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col antialiased relative">
+      {/* Browser extensions (e.g. ColorZilla's cz-shortcut-listen, Grammarly) add attributes to
+          <body> before React loads; ignore those so they don't raise hydration errors. This only
+          affects <body>'s own attributes, not anything rendered inside it. */}
+      <body className="min-h-full flex flex-col antialiased relative" suppressHydrationWarning>
         <Toaster position="top-center" reverseOrder={false} />
         <AuthProvider>
           <WishlistProvider>

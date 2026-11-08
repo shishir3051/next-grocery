@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { News } from '@/models/News';
-import { requireRole } from "@/lib/authGuard";
+import { requireRoleForWrite } from "@/lib/authGuard";
 import { badRequest, isDuplicateKeyError, notFound, readJsonObject, serverError } from "@/lib/http";
 import { isObjectId } from "@/lib/validation";
 import { parseNews } from "@/lib/newsInput";
@@ -10,7 +10,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const { id } = await params;
@@ -30,7 +30,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const { id } = await params;

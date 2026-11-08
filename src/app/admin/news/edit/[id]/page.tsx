@@ -33,7 +33,7 @@ export default function EditNewsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center" role="status">
+      <div className="flex min-h-[40vh] items-center justify-center" role="status">
         <Loader2 className="h-8 w-8 animate-spin text-brand-600" aria-hidden="true" />
         <span className="sr-only">Loading story editor…</span>
       </div>
@@ -42,16 +42,16 @@ export default function EditNewsPage() {
 
   if (!article) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className={cn(PANEL_CLASS, "w-full max-w-md p-6 sm:p-8 text-center")}>
+      <div className="flex min-h-[40vh] items-center justify-center px-4">
+        <div className={cn(PANEL_CLASS, "w-full max-w-md p-4 text-center")}>
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
             <FileQuestion size={24} className="text-slate-500" aria-hidden="true" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-slate-900">Story not found</h2>
+          <h2 className="mt-4 text-base font-semibold text-slate-900">Story not found</h2>
           <p className="mt-1 text-sm text-slate-500">
             We couldn&apos;t find the article you&apos;re trying to edit. It may have been deleted.
           </p>
-          <Button href="/admin/news" variant="secondary" className="mt-6">
+          <Button href="/admin/news" variant="secondary" size="sm" className="mt-4">
             <ChevronLeft size={16} aria-hidden="true" /> Back to news
           </Button>
         </div>
@@ -60,12 +60,12 @@ export default function EditNewsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4">
       {/* The shell's top bar already shows "News", so this is a section title */}
       <div className="space-y-1">
         <Link
           href="/admin/news"
-          className="-ml-2 inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-700"
+          className="-ml-2 inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-700"
         >
           <ChevronLeft size={16} aria-hidden="true" /> Back to news
         </Link>

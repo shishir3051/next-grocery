@@ -23,7 +23,7 @@ function SettingsSection({
 }) {
   return (
     <section aria-labelledby={`${id}-title`} className={PANEL_CLASS}>
-      <div className="flex items-start gap-3 border-b border-slate-200 px-4 py-4 sm:px-6">
+      <div className="flex items-start gap-3 border-b border-slate-200 px-4 py-3">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden="true">
           <Icon size={20} />
         </div>
@@ -32,7 +32,7 @@ function SettingsSection({
           <p className="text-sm text-slate-500">{description}</p>
         </div>
       </div>
-      <div className="p-4 sm:p-6">{children}</div>
+      <div className="p-4">{children}</div>
     </section>
   );
 }
@@ -90,7 +90,7 @@ export default function AdminSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center" role="status">
+      <div className="h-[40vh] flex items-center justify-center" role="status">
         <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
         <span className="sr-only">Loading settings…</span>
       </div>
@@ -100,14 +100,14 @@ export default function AdminSettingsPage() {
   const isMaintenanceOn = Boolean(settings.maintenanceMode);
 
   return (
-    <form onSubmit={handleSave} className="max-w-3xl space-y-6">
+    <form onSubmit={handleSave} className="max-w-3xl space-y-4">
       <div className="space-y-1">
         <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Store settings</h2>
         <p className="text-sm text-slate-500">Changes apply to the storefront and checkout after you save.</p>
       </div>
 
       <SettingsSection id="store-details" icon={Store} title="Store details" description="How your store is named and how customers reach you.">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label htmlFor="settings-store-name" className={LABEL_CLASS}>Store name</label>
             <input
@@ -134,7 +134,7 @@ export default function AdminSettingsPage() {
       </SettingsSection>
 
       <SettingsSection id="delivery" icon={Truck} title="Delivery" description="Shipping charges added at checkout.">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label htmlFor="settings-delivery-fee" className={LABEL_CLASS}>Delivery fee (৳)</label>
             <input
@@ -182,7 +182,7 @@ export default function AdminSettingsPage() {
             aria-checked={isMaintenanceOn}
             aria-describedby="settings-maintenance-help"
             onClick={() => setSettings({...settings, maintenanceMode: !settings.maintenanceMode})}
-            className="flex h-10 w-14 flex-shrink-0 items-center justify-center rounded-full"
+            className="flex h-9 w-14 flex-shrink-0 items-center justify-center rounded-full"
           >
             <span
               className={cn(
@@ -202,7 +202,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {isMaintenanceOn && (
-          <div className="mt-4 flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm text-accent-800">
+          <div className="mt-3 flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-3 text-sm text-accent-800">
             <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
             <p>
               <span className="font-semibold">Maintenance mode is on.</span>{" "}Customers can&apos;t place orders until you switch it off and save.
@@ -212,7 +212,7 @@ export default function AdminSettingsPage() {
       </SettingsSection>
 
       {/* Single save action for every section above */}
-      <div className={cn(PANEL_CLASS, "flex flex-col-reverse items-stretch gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6")}>
+      <div className={cn(PANEL_CLASS, "flex flex-col-reverse items-stretch gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-end")}>
         <div aria-live="polite" role="status" className="sm:mr-auto">
           {message && (
             <motion.p
@@ -225,7 +225,7 @@ export default function AdminSettingsPage() {
             </motion.p>
           )}
         </div>
-        <Button type="submit" loading={isSaving}>
+        <Button type="submit" size="sm" loading={isSaving}>
           {!isSaving && <Save size={16} aria-hidden="true" />}
           Save changes
         </Button>

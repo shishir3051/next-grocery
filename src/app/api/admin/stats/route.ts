@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { Order } from "@/models/Order";
 import { Product } from "@/models/Product";
 import { User } from "@/models/User";
-import { requireRole } from "@/lib/authGuard";
+import { isDemoRestricted, requireRole } from "@/lib/authGuard";
+import { maskOrder } from "@/lib/demoMask";
 import { serverError } from "@/lib/http";
 
 // Paid orders and cash-on-delivery orders that aren't cancelled count as sales;
@@ -112,7 +113,10 @@ export async function GET() {
         }
       },
       salesHistory,
-      latestOrders,
+      // Live demo: real customers' details are masked.
+      latestOrders: isDemoRestricted(auth.user)
+        ? latestOrders.map((o: Record<string, unknown>) => maskOrder(o))
+        : latestOrders,
       lowStockProducts
     });
   } catch (error) {

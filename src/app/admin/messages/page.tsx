@@ -136,7 +136,7 @@ export default function AdminMessagesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="space-y-1">
         <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Customer messages</h2>
         <p className="text-sm text-slate-500">Messages from the contact page. Replies are emailed to the customer and kept here.</p>
@@ -162,17 +162,17 @@ export default function AdminMessagesPage() {
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-4 lg:grid-cols-5">
         {/* List */}
         <div className={cn(PANEL_CLASS, "lg:col-span-2 overflow-hidden")}>
           {isLoading ? (
-            <div className="flex items-center justify-center py-16 text-slate-500">
+            <div className="flex items-center justify-center py-10 text-slate-500">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
               <span className="ml-2 text-sm">Loading messages…</span>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-slate-500">
-              <Inbox className="h-8 w-8" aria-hidden="true" />
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-slate-500">
+              <Inbox className="h-6 w-6" aria-hidden="true" />
               <p className="text-sm">No messages here yet.</p>
             </div>
           ) : (
@@ -182,7 +182,7 @@ export default function AdminMessagesPage() {
                   <button
                     onClick={() => open(m)}
                     className={cn(
-                      "w-full px-4 py-3.5 text-left transition-colors hover:bg-slate-50",
+                      "w-full px-3 py-2 text-left transition-colors hover:bg-slate-50",
                       selectedId === m._id && "bg-brand-50/60"
                     )}
                   >
@@ -203,18 +203,18 @@ export default function AdminMessagesPage() {
         </div>
 
         {/* Detail */}
-        <div className={cn(PANEL_CLASS, "lg:col-span-3 p-5 sm:p-6")}>
+        <div className={cn(PANEL_CLASS, "lg:col-span-3 p-4")}>
           {!selected ? (
-            <div className="flex h-full min-h-60 flex-col items-center justify-center gap-2 text-center text-slate-500">
-              <Mail className="h-8 w-8" aria-hidden="true" />
+            <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-center text-slate-500">
+              <Mail className="h-6 w-6" aria-hidden="true" />
               <p className="text-sm">Select a message to read and reply.</p>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-slate-500">{reference(selected._id)} · {formatDate(selected.createdAt)}</p>
-                  <h3 className="mt-1 text-lg font-semibold text-slate-900">{selected.subject}</h3>
+                  <h3 className="mt-1 text-base font-semibold text-slate-900">{selected.subject}</h3>
                   <p className="mt-1 text-sm text-slate-700">
                     {selected.name} · <a href={`mailto:${selected.email}`} className="text-brand-700 hover:underline break-all">{selected.email}</a>
                   </p>
@@ -240,7 +240,7 @@ export default function AdminMessagesPage() {
               </div>
 
               {/* Customer text is rendered as plain text (never HTML). */}
-              <div className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-800">
+              <div className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-800">
                 {selected.message}
               </div>
 
@@ -248,7 +248,7 @@ export default function AdminMessagesPage() {
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-slate-900">Replies</p>
                   {selected.replies.map((r, i) => (
-                    <div key={i} className="rounded-xl border border-success-100 bg-success-50/50 p-4">
+                    <div key={i} className="rounded-xl border border-success-100 bg-success-50/50 p-3">
                       <p className="flex items-center gap-1.5 text-xs text-slate-500">
                         <CheckCircle2 className="h-3.5 w-3.5 text-success-600" aria-hidden="true" />
                         {r.sentByName || "Admin"} · {formatDate(r.sentAt)}
@@ -259,7 +259,7 @@ export default function AdminMessagesPage() {
                 </div>
               )}
 
-              <form onSubmit={sendReply} className="space-y-3 border-t border-slate-100 pt-5">
+              <form onSubmit={sendReply} className="space-y-3 border-t border-slate-100 pt-4">
                 <label htmlFor="reply-body" className={LABEL_CLASS}>Reply to {selected.name}</label>
                 <textarea
                   id="reply-body"
@@ -271,7 +271,7 @@ export default function AdminMessagesPage() {
                   className={cn(INPUT_CLASS, "resize-y")}
                 />
                 <p className={HELP_CLASS}>Sent by email to {selected.email}, with their original message quoted below.</p>
-                <Button type="submit" loading={isSending} disabled={!reply.trim()}>
+                <Button type="submit" size="sm" loading={isSending} disabled={!reply.trim()}>
                   {!isSending && <Send className="h-4 w-4" aria-hidden="true" />}
                   {isSending ? "Sending…" : "Send reply"}
                 </Button>

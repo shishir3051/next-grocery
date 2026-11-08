@@ -9,7 +9,8 @@ import Navbar from "./Navbar";
  * admin and delivery keep their focused layouts.
  */
 const HIDDEN_ON = ["/", "/login", "/register", "/forgot-password", "/checkout"];
-const HIDDEN_PREFIXES = ["/admin", "/delivery"];
+// /showcase is the product landing page of the live demo; it has its own nav.
+const HIDDEN_PREFIXES = ["/admin", "/delivery", "/showcase"];
 
 export default function SiteHeader() {
   const pathname = usePathname() ?? "/";

@@ -66,6 +66,7 @@ Rules
 - No `rounded-[2rem]`/`[2.5rem]`/`[3rem]`/`rounded-3xl`.
 - Shadows: `shadow-sm` (resting cards), `shadow-md` (hover / popovers), `shadow-xl` (modals, drawers). They are redefined in `globals.css` as soft, layered shadows tinted with the neutral hue. No coloured glow shadows (`shadow-teal-600/20` etc.); the primary button is the only element with a brand-tinted shadow.
 - Page container: `mx-auto max-w-6xl px-4 sm:px-6`; vertical rhythm `py-8 sm:py-12`; card padding `p-4 sm:p-6`.
+- **Admin density (compact):** the admin panel is denser than the storefront so more data fits on screen. Content padding `p-3 sm:p-4 lg:p-5`, page stack `space-y-4`, card grids `gap-4`, cards `rounded-xl p-4`, card header bars `px-4 py-3`, table cells `px-3 py-2`, admin buttons `size="sm"` (36 px), icon buttons 32 px. Use the tokens in `src/components/admin/adminStyles.ts`.
 
 ## 4. Components (`src/components/ui/`)
 
@@ -76,7 +77,7 @@ Rules
 ## 5. Accessibility rules
 - Every icon-only button has `aria-label`.
 - Visible keyboard focus everywhere (global `:focus-visible` ring in globals.css). Never `outline-none` without a replacement.
-- Interactive targets ≥ 40×40 px on touch screens.
+- Interactive targets ≥ 40×40 px on touch screens. The admin's 32 px icon and page buttons grow to 40 px there via `pointer-coarse:`.
 - Honour `prefers-reduced-motion` (global rule disables non-essential animation).
 
 ## 6. Layout

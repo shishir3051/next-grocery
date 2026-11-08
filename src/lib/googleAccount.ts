@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { normalizeEmail } from "@/lib/validation";
+import { isDemoEmail } from "@/lib/demo";
 
 export interface GoogleIdentity {
   sub: string;
@@ -26,6 +27,9 @@ const unusablePassword = () => bcrypt.hash(randomBytes(32).toString("hex"), 12);
 export async function findOrCreateGoogleUser(identity: GoogleIdentity): Promise<{ id: string; role: string } | null> {
   const email = normalizeEmail(identity.email);
   if (!identity.sub || !email || identity.email_verified !== true) return null;
+  // Live-demo addresses (lib/demo.ts) are never linked: whoever owns that domain must not
+  // be able to sign in as a demo account.
+  if (isDemoEmail(email)) return null;
 
   await dbConnect();
 

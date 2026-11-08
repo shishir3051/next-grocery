@@ -12,6 +12,7 @@ import {
 import { rollResetWindow } from "@/lib/passwordReset";
 import { readJsonObject, tooManyRequests } from "@/lib/http";
 import { normalizeEmail } from "@/lib/validation";
+import { isDemoEmail } from "@/lib/demo";
 import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 
 /**
@@ -38,6 +39,9 @@ export async function POST(request: NextRequest) {
     if (!normalizedEmail) {
       return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
     }
+
+    // Demo accounts never get reset codes (their mail domain isn't ours); same reply as always.
+    if (isDemoEmail(normalizedEmail)) return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
 
     await dbConnect();
 

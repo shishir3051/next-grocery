@@ -8,6 +8,7 @@ import { Mail, Lock, ArrowRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import AuthShell, { AuthNotice, AUTH_INPUT_CLASS, RESET_EMAIL_KEY } from "@/components/auth/AuthShell";
 import GoogleSignInButton, { GOOGLE_ERRORS } from "@/components/auth/GoogleSignInButton";
+import DemoLoginPanel from "@/components/auth/DemoLoginPanel";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,6 +16,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Sent here from /admin (e.g. a reviewer opening the admin panel): highlight the admin demo.
+  const [cameFromAdmin, setCameFromAdmin] = useState(false);
   const router = useRouter();
 
   // After a password reset the reset page sends the user here with ?reset=success;
@@ -23,8 +26,9 @@ export default function LoginPage() {
   // useSearchParams would force a Suspense boundary around the whole page.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of the URL on mount
+    setCameFromAdmin(params.get("callbackUrl")?.startsWith("/admin") ?? false);
     if (params.get("reset") === "success") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of the URL on mount
       setNotice("Your password has been reset. Log in with your new password.");
     }
     const oauthError = params.get("error");
@@ -78,7 +82,9 @@ export default function LoginPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <DemoLoginPanel highlightAdmin={cameFromAdmin} />
+
+      <form onSubmit={handleSubmit} className="mt-5 space-y-5">
         {notice && <AuthNotice tone="success">{notice}</AuthNotice>}
         {error && <AuthNotice tone="error">{error}</AuthNotice>}
 

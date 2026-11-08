@@ -35,14 +35,14 @@ function NewsThumbnail({ src }: { src?: string }) {
 
   if (!src || failed) {
     return (
-      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border border-brand-100 bg-brand-50">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-brand-100 bg-brand-50">
         <Newspaper size={20} className="text-brand-600" aria-hidden="true" />
       </div>
     );
   }
 
   return (
-    <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
       {/* Plain <img>: sources are base64 data URLs or arbitrary hosts that next/image is not configured for */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
@@ -101,14 +101,14 @@ export default function AdminNewsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header: the shell's top bar already shows "News", so this is a section title */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">News &amp; stories</h2>
           <p className="text-sm text-slate-500">Create and manage your store&apos;s latest stories.</p>
         </div>
-        <Button href="/admin/news/new" className="whitespace-nowrap">
+        <Button href="/admin/news/new" size="sm" className="whitespace-nowrap">
           <Plus size={16} aria-hidden="true" /> New story
         </Button>
       </div>
@@ -116,9 +116,9 @@ export default function AdminNewsPage() {
       {/* Quick stats */}
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.label} className={cn(PANEL_CLASS, "p-4 sm:p-5")}>
+          <div key={stat.label} className={cn(PANEL_CLASS, "p-4")}>
             <dt className="text-sm font-medium text-slate-600">{stat.label}</dt>
-            <dd className="mt-1 text-2xl font-bold text-slate-900 tabular-nums">{stat.value}</dd>
+            <dd className="mt-1 text-xl font-bold text-slate-900 tabular-nums">{stat.value}</dd>
           </div>
         ))}
       </dl>
@@ -222,7 +222,7 @@ export default function AdminNewsPage() {
             </table>
           </div>
         ) : (
-          <div className="flex flex-col items-center px-4 py-16 text-center">
+          <div className="flex flex-col items-center px-4 py-10 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
               <Newspaper size={24} className="text-brand-600" aria-hidden="true" />
             </div>
@@ -235,7 +235,7 @@ export default function AdminNewsPage() {
                 : "Write your first story to share news, tips and recipes with your customers."}
             </p>
             {!searchTerm && (
-              <Button href="/admin/news/new" variant="secondary" className="mt-5">
+              <Button href="/admin/news/new" variant="secondary" size="sm" className="mt-4">
                 <Plus size={16} aria-hidden="true" /> New story
               </Button>
             )}

@@ -1,26 +1,30 @@
 /**
  * Shared class names for admin screens (see docs/design/DESIGN_SYSTEM.md).
  * Import these instead of re-declaring table, form and badge styles per page.
+ *
+ * The admin uses a compact density: tight table rows, small paddings and 32px icon
+ * buttons, so more data fits on screen. On touch screens (`pointer-coarse:`) the small
+ * controls grow to 40px so they stay easy to tap. Keep new admin UI on these tokens.
  */
 
 /** White content panel: tables, forms, stat cards. */
-export const PANEL_CLASS = "bg-white rounded-2xl border border-slate-200 shadow-sm";
+export const PANEL_CLASS = "bg-white rounded-xl border border-slate-200 shadow-sm";
 
 /** Table header cell: readable, sentence case (no 10px uppercase). */
-export const TH_CLASS = "px-4 py-3 text-xs font-semibold text-slate-600";
+export const TH_CLASS = "px-3 py-2 text-xs font-semibold text-slate-600";
 /** Table body cell. */
-export const TD_CLASS = "px-4 py-3 text-sm text-slate-700";
+export const TD_CLASS = "px-3 py-2 text-sm text-slate-700";
 
 /** Form label, always tied to its input with htmlFor/id. */
-export const LABEL_CLASS = "block text-sm font-medium text-slate-700 mb-1.5";
+export const LABEL_CLASS = "block text-sm font-medium text-slate-700 mb-1";
 /** Text input / select / textarea with a visible border and brand focus ring. */
 export const INPUT_CLASS =
-  "w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20";
 /** Helper text under a field. */
-export const HELP_CLASS = "mt-1.5 text-xs text-slate-500";
+export const HELP_CLASS = "mt-1 text-xs text-slate-500";
 
 /** Pagination page button (combine with an active/idle colour). */
-export const PAGE_BUTTON_CLASS = "flex h-10 min-w-10 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors";
+export const PAGE_BUTTON_CLASS = "flex h-8 min-w-8 pointer-coarse:h-10 pointer-coarse:min-w-10 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors";
 
 /** Status pill base; add one of BADGE_TONES for colour. Always contains text, never colour alone. */
 export const BADGE_CLASS = "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium";
@@ -34,6 +38,6 @@ export const BADGE_TONES = {
 
 /** Square icon-only action button in table rows (always pass an aria-label). */
 export const ICON_BUTTON_CLASS =
-  "inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800";
+  "inline-flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800";
 export const ICON_BUTTON_DANGER_CLASS =
-  "inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-danger-50 hover:text-danger-700";
+  "inline-flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-danger-50 hover:text-danger-700";

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ContactMessage, CONTACT_STATUSES } from "@/models/ContactMessage";
-import { requireRole } from "@/lib/authGuard";
+import { isDemoRestricted, requireRole } from "@/lib/authGuard";
+import { maskMessage } from "@/lib/demoMask";
 import { serverError } from "@/lib/http";
 
 const PAGE_SIZE = 50;
@@ -24,7 +25,9 @@ export async function GET(request: NextRequest) {
     const counts = Object.fromEntries(CONTACT_STATUSES.map(s => [s, 0])) as Record<string, number>;
     for (const g of grouped as { _id: string; count: number }[]) counts[g._id] = g.count;
 
-    return NextResponse.json({ messages, total, page, pageSize: PAGE_SIZE, counts });
+    // Live demo: real customers' details and message text are hidden.
+    const visible = isDemoRestricted(auth.user) ? messages.map(m => maskMessage(m as Record<string, unknown>)) : messages;
+    return NextResponse.json({ messages: visible, total, page, pageSize: PAGE_SIZE, counts });
   } catch (error) {
     return serverError(error, "Admin messages fetch error");
   }

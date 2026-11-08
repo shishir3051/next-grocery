@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HeroSlide } from "@/models/HeroSlide";
-import { requireRole } from "@/lib/authGuard";
+import { requireRole, requireRoleForWrite } from "@/lib/authGuard";
 import { badRequest, notFound, readJsonObject, serverError } from "@/lib/http";
 import { isHttpsUrl, isObjectId, optionalImage, optionalString, requiredString, toNumber } from "@/lib/validation";
 
@@ -72,7 +72,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const body = await readJsonObject(request);
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const body = await readJsonObject(request);
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await requireRole("admin");
+    const auth = await requireRoleForWrite("admin");
     if ("response" in auth) return auth.response;
 
     const id = request.nextUrl.searchParams.get("id");

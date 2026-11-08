@@ -220,14 +220,14 @@ export default function AdminHeroPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header (the admin shell already shows the page title in its top bar) */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Home page banners</h2>
           <p className="text-sm text-slate-500">Manage the slides that rotate at the top of your home page.</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="whitespace-nowrap">
+        <Button size="sm" onClick={() => handleOpenModal()} className="whitespace-nowrap">
           <Plus size={16} aria-hidden="true" /> Add slide
         </Button>
       </div>
@@ -238,13 +238,13 @@ export default function AdminHeroPage() {
           <span className="sr-only">Loading slides…</span>
         </div>
       ) : slides.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
             <ImageIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
           </div>
           <h3 className="text-base font-semibold text-slate-900">No slides yet</h3>
-          <p className="mt-1 mb-6 text-sm text-slate-500">Create your first banner for the home page.</p>
-          <Button onClick={() => handleOpenModal()}>
+          <p className="mt-1 mb-4 text-sm text-slate-500">Create your first banner for the home page.</p>
+          <Button size="sm" onClick={() => handleOpenModal()}>
             <Plus size={16} aria-hidden="true" /> Create slide
           </Button>
         </div>
@@ -255,12 +255,12 @@ export default function AdminHeroPage() {
               key={slide._id}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center"
+              className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center"
             >
               {/* Preview swatch: the slide's real gradient, decor and image */}
               <div
                 aria-hidden="true"
-                className={`relative h-24 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br sm:h-20 sm:w-40 ${slide.gradient} ${slide.isActive ? "" : "opacity-50 grayscale"}`}
+                className={`relative h-20 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br sm:h-18 sm:w-36 ${slide.gradient} ${slide.isActive ? "" : "opacity-50 grayscale"}`}
               >
                 {slide.image && (
                   <Image src={slide.image} alt="" fill className="object-cover mix-blend-overlay opacity-60" />
@@ -301,7 +301,7 @@ export default function AdminHeroPage() {
                   role="switch"
                   aria-checked={slide.isActive}
                   onClick={() => toggleActive(slide)}
-                  className="inline-flex h-10 items-center gap-2 rounded-lg px-2.5 text-sm font-medium transition-colors hover:bg-slate-100"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium transition-colors hover:bg-slate-100"
                 >
                   <SwitchTrack on={slide.isActive} />
                   <span className={cn("w-14 text-left", slide.isActive ? "text-success-700" : "text-slate-500")}>
@@ -354,9 +354,9 @@ export default function AdminHeroPage() {
               aria-describedby="hero-modal-description"
               className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
             >
-              <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-4">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
                 <div className="min-w-0">
-                  <h2 id="hero-modal-title" className="text-lg font-semibold text-slate-900">
+                  <h2 id="hero-modal-title" className="text-base font-semibold text-slate-900">
                     {editingSlide ? "Edit slide" : "Create new slide"}
                   </h2>
                   <p id="hero-modal-description" className="text-sm text-slate-500">
@@ -369,16 +369,16 @@ export default function AdminHeroPage() {
                   aria-label="Close"
                   className={ICON_BUTTON_CLASS}
                 >
-                  <X size={20} aria-hidden="true" />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
                 {/* Scrollable fields; the action bar below stays visible */}
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                  <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     {/* Left column: content */}
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       <div>
                         <label htmlFor="hero-title" className={LABEL_CLASS}>Main title</label>
                         <input
@@ -478,7 +478,7 @@ export default function AdminHeroPage() {
                             aria-checked={formData.isActive}
                             aria-labelledby="hero-visibility-label hero-visibility-state"
                             onClick={() => setFormData({...formData, isActive: !formData.isActive})}
-                            className="flex h-11 w-full items-center gap-3 rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                            className="flex min-h-9.5 w-full items-center gap-3 rounded-lg border border-slate-300 bg-white px-3 py-0.5 text-sm leading-4 font-medium text-slate-700 transition-colors hover:bg-slate-50"
                           >
                             <SwitchTrack on={formData.isActive} />
                             <span id="hero-visibility-state">
@@ -490,11 +490,11 @@ export default function AdminHeroPage() {
                     </div>
 
                     {/* Right column: media & styling */}
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       <div>
                         <p id="hero-image-label" className={LABEL_CLASS}>Background image</p>
                         {formData.image ? (
-                          <div className="relative h-44 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                          <div className="relative h-40 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                             <Image src={formData.image} alt="Background image preview" fill className="object-cover" />
                             <button
                               type="button"
@@ -509,7 +509,7 @@ export default function AdminHeroPage() {
                           // The transparent file input covers the whole zone, so it accepts both clicks and dropped files
                           <label
                             htmlFor="hero-image"
-                            className="relative flex h-44 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-center transition-colors hover:border-brand-400 hover:bg-brand-50/40 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20"
+                            className="relative flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 text-center transition-colors hover:border-brand-400 hover:bg-brand-50/40 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20"
                           >
                             <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
                               <Upload size={18} className="text-slate-500" aria-hidden="true" />
@@ -589,7 +589,7 @@ export default function AdminHeroPage() {
                         </div>
 
                         {isCustomTheme && (
-                          <div className="mt-3 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="mt-3 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                             <p className="text-xs text-slate-600">
                               <span className="font-semibold text-slate-700">Advanced.</span>{" "}
                               Tailwind only generates classes already used in the app&apos;s code, so
@@ -620,7 +620,7 @@ export default function AdminHeroPage() {
                       </fieldset>
 
                       {/* Live preview (mirrors the storefront HeroBanner at a smaller size) */}
-                      <div className="border-t border-slate-200 pt-5">
+                      <div className="border-t border-slate-200 pt-4">
                         <p className={LABEL_CLASS}>Live preview</p>
                         <div className={`relative flex aspect-[2/1] w-full flex-col justify-center overflow-hidden rounded-2xl bg-gradient-to-br p-6 text-white ${formData.gradient}`}>
                           {formData.image && <Image src={formData.image} alt="" fill className="object-cover mix-blend-overlay opacity-60" />}
@@ -653,9 +653,9 @@ export default function AdminHeroPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:justify-end">
-                  <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit">
+                <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-5 py-3 sm:flex-row sm:justify-end">
+                  <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" size="sm">
                     <Save size={16} aria-hidden="true" />
                     {editingSlide ? "Save changes" : "Create slide"}
                   </Button>

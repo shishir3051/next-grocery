@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { isObjectId } from "@/lib/validation";
+import { DEMO_READ_ONLY_HEADER, DEMO_READ_ONLY_MESSAGE, isDemoEmail, isDemoModeEnabled } from "@/lib/demo";
 
 export type Role = "user" | "admin" | "delivery";
 
@@ -12,6 +13,8 @@ export interface AuthorizedUser {
   email: string;
   name: string;
   role: Role;
+  /** A live-demo account (see lib/demo.ts). */
+  isDemo: boolean;
 }
 
 /**
@@ -32,6 +35,8 @@ export const PRIVATE_USER_FIELDS =
  *   const auth = await requireRole("admin");
  *   if ("response" in auth) return auth.response;
  *   auth.user.id ...
+ *
+ * Handlers that change data use requireRoleForWrite instead.
  */
 export async function requireRole(...roles: Role[]): Promise<{ user: AuthorizedUser } | { response: NextResponse }> {
   const session = await getServerSession(authOptions);
@@ -44,7 +49,28 @@ export async function requireRole(...roles: Role[]): Promise<{ user: AuthorizedU
   if (roles.length > 0 && !roles.includes(user.role)) {
     return { response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
-  return { user: { id: String(user._id), email: user.email, name: user.name, role: user.role } };
+  return { user: { id: String(user._id), email: user.email, name: user.name, role: user.role, isDemo: isDemoEmail(user.email) } };
+}
+
+/** True when this user is a demo account on a live-demo deployment (DEMO_MODE=true). */
+export const isDemoRestricted = (user: AuthorizedUser) => user.isDemo && isDemoModeEnabled();
+
+/** The 403 answer for a change a demo account isn't allowed to make. */
+export const demoReadOnly = () =>
+  NextResponse.json(
+    { error: DEMO_READ_ONLY_MESSAGE, code: "DEMO_READ_ONLY" },
+    { status: 403, headers: { [DEMO_READ_ONLY_HEADER]: "1" } }
+  );
+
+/**
+ * requireRole for handlers that change data: on a live-demo deployment the demo accounts
+ * get a 403 "read-only demo" answer instead. Use it for every POST/PUT/PATCH/DELETE that
+ * a demo account must not perform.
+ */
+export async function requireRoleForWrite(...roles: Role[]): Promise<{ user: AuthorizedUser } | { response: NextResponse }> {
+  const auth = await requireRole(...roles);
+  if ("user" in auth && isDemoRestricted(auth.user)) return { response: demoReadOnly() };
+  return auth;
 }
 
 /** Any signed-in user whose account still exists. */

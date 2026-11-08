@@ -5,6 +5,8 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      /** Signed in to a live-demo account (lib/demo.ts). */
+      isDemo?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -22,5 +24,9 @@ declare module "next-auth/jwt" {
     authTime?: number;
     /** When the account was last re-checked against the database (ms). */
     checkedAt?: number;
+    /** Live-demo account (lib/demo.ts). */
+    isDemo?: boolean;
+    /** Signed in with a one-click demo login; revoked once DEMO_MODE is off (lib/auth.ts). */
+    demoLogin?: boolean;
   }
 }

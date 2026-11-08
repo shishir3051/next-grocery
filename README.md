@@ -1,84 +1,76 @@
-# 🥑 FreshBasket – Modern Grocery Platform
+# 🥑 FreshBasket – Grocery E-commerce Platform
 
-FreshBasket is a premium, high-performance e-commerce solution built with **Next.js 16+** and **MongoDB**. It offers a seamless grocery shopping experience with instant data loading, AI integrations, and a robust administrative suite.
+FreshBasket is a complete online grocery store for Bangladesh, built with **Next.js 16**, **TypeScript** and **MongoDB**: storefront, checkout with cash on delivery and SSLCommerz, AI product search, an admin panel, and a delivery-rider view.
 
-![Banner Placeholder](https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1200)
+**Live demo:** https://next-grocery-nine.vercel.app/showcase (product page) · https://next-grocery-nine.vercel.app (store)
 
-## ⚡ Key Highlights
+**One-click demo logins, no password:** open the login page and choose **Admin demo**, **Customer** or **Rider**. Try the full flow: order as the customer, assign the order to the Demo Rider as the admin, then mark it delivered as the rider. The demo admin can open every page but only changes demo orders; real customers' personal data is masked.
 
-### 🛍 Storefront Experience
-- **Instant Data Loading**: Powered by Server-Side Pre-fetching, providing a zero-loading first render experience.
-- **Smart Grouping**: Category navigation that automatically organizes products into sub-sections (e.g., Dairy & Eggs showing Milk, Eggs, etc.).
-- **AI Tools**: Integrated **Smart Search** and **Recipe Suggestions** based on currently available ingredients.
-- **Geolocation & Autofill**: Real-time delivery location detection with automatic address completion during checkout.
-- **Micro-Interactions**: Smooth card transitions, glassmorphism badges, and hover-triggered quick-add controls.
+Set up your own copy, including the demo accounts and the optional live-demo mode, with [HowToSetup.md](HowToSetup.md).
 
-### 🔐 Admin Dashboard
-- **Product Management**: Comprehensive controls for inventory with automated image processing (Base64 optimization).
-- **Category Architect**: Full CRUD for hierarchical categories (Parent/Sub) with dynamic icon assignment.
-- **Analytics & Stats**: Real-time dashboard with sales overview and order velocity tracking.
-- **Coupon System**: Advanced promotion engine supporting percentage, fixed amounts, and minimum order requirements.
+## ✅ Features (datasheet)
+
+### Storefront
+- Catalogue with categories and subcategories, product search, product details, wishlist and cart.
+- Checkout: **cash on delivery**, **wallet credit**, **SSLCommerz** online payment (verified server-side), coupons, configurable delivery fee and free-delivery threshold.
+- **AI smart search** (English, Banglish, Bangla) and **recipe suggestions** from the cart using Google Gemini, with keyword and curated fallbacks when no AI key is set.
+- **Delivery location** picker with a map, address search and "use my location" (OpenStreetMap or Barikoi), used to fill the checkout address.
+- Accounts: sign-up with 6-digit email verification, password reset, optional **Google sign-in**, profile and address, order history, referral bonus (wallet).
+- Content pages: offers (active coupons), news, FAQ, store locations, policies, and a **contact form**.
+
+### Admin panel (`/admin`)
+- Dashboard: sales of the last 7 days, order and user counts, low-stock products, latest orders.
+- Manage products (with image upload or download from a URL), categories (3 levels), coupons, news, hero banners, store settings and maintenance mode.
+- Orders: status workflow (pending → processing → shipped → delivered, or cancelled with stock, coupon and wallet returned), assign a delivery rider.
+- Users: create accounts, change roles (customer, admin, delivery rider), delete.
+- **Messages**: contact-form inbox; reply by email from the panel.
+
+### Delivery rider (`/delivery`)
+- Assigned orders with customer address, phone and map link; mark as delivered (cash orders become paid).
+
+### Security
+Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers. Details: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## 🛠 Tech Stack
 
-- **Framework**: Next.js 16 (App Router + Server Components)
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: NextAuth.js (email + password with verification and reset, optional Google sign-in)
-- **Customer support**: contact form with an admin inbox and email replies
-- **Payments**: Cash on delivery, wallet credit, SSLCommerz
-- **Styling**: Tailwind CSS 4
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **AI search**: understands English, Banglish and Bangla queries
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| Database | MongoDB with Mongoose 9 |
+| Authentication | NextAuth.js 4 (email + password, optional Google) |
+| Payments | SSLCommerz (optional), cash on delivery, wallet |
+| AI | Google Gemini (optional) |
+| Email | Nodemailer (Gmail or any SMTP account via app password) |
+| UI | Tailwind CSS 4, Framer Motion, Lucide icons, Leaflet maps, Recharts |
 
 ## 🚀 Getting Started
 
-Requirements: Node.js 20.9 or newer, a MongoDB database (MongoDB Atlas free tier works).
-The full clean-machine walkthrough (including a local MongoDB option) is in [HowToSetup.md](HowToSetup.md).
+Requirements: Node.js 20.9 or newer, a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough, including VPS and Docker, is in [HowToSetup.md](HowToSetup.md).
 
-1. **Clone & Install**:
-   ```bash
-   npm install
-   ```
+```bash
+npm ci                         # install pinned dependencies
+cp .env.example .env.local     # then set MONGODB_URI, NEXTAUTH_URL, NEXT_PUBLIC_BASE_URL, NEXTAUTH_SECRET
+npm run db:setup               # indexes + sample catalogue + demo admin/customer/rider (prints passwords)
+npm run dev                    # http://localhost:3000
+```
 
-2. **Environment Setup**:
-   ```bash
-   cp .env.example .env.local
-   ```
-   Then fill in the values. [`.env.example`](.env.example) explains each one:
-   - **Required:** `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL`, `NEXTAUTH_SECRET`, and `EMAIL_USER` / `EMAIL_PASS` in production (in development the codes are printed to the server console).
-   - **Optional:** `SSLCOMMERZ_*` + `IS_LIVE` (online payments), `GEMINI_API_KEY` (AI search and recipes; without it, keyword search and curated recipes are used), `BARIKOI_API_KEY` (address search; OpenStreetMap otherwise), `NEXT_PUBLIC_MAP_TILE_URL` (map tiles).
+| Script | Purpose |
+|---|---|
+| `npm run db:indexes` | Create collections and indexes on an empty (or existing) database |
+| `npm run db:seed [-- --demo-users]` | Sample data; `--demo-users` creates/resets the demo accounts |
+| `npm run promote-admin -- you@example.com` | Make a registered account an admin |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run typecheck` / `npm run lint` / `npm run audit:prod` | Checks |
 
-3. **Create the first admin**:
-   Register and verify an account in the app, then run:
-   ```bash
-   npm run promote-admin -- you@example.com
-   ```
-   Sign out and back in to refresh your session.
-
-4. **Seeding (Optional, development only)**:
-   When the catalog is empty, admins see a **Seed Database** button on the home page. It wipes and repopulates categories, products and hero slides, so the API refuses it in production.
-
-5. **Run Dev**:
-   ```bash
-   npm run dev
-   ```
+Every environment variable is explained in [`.env.example`](.env.example). Required: `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL`, `NEXTAUTH_SECRET`, plus `EMAIL_USER` / `EMAIL_PASS` in production. Optional: SSLCommerz, Gemini, Google sign-in, Barikoi, map tiles.
 
 ## 🌍 Deployment
 
-Deploy to **Vercel** or with **Docker on a VPS** (Dockerfile and `docker-compose.yml` included). Step-by-step instructions, reverse-proxy config and a post-deploy checklist are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Deploy to **Vercel**, a **VPS with Node.js**, or a **VPS with Docker** (Dockerfile and `docker-compose.yml` with optional MongoDB included). Step-by-step instructions, reverse-proxy config and a post-deploy checklist are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## 🛡 Security
+## 📡 API
 
-Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers. Details: [docs/SECURITY.md](docs/SECURITY.md). Codebase guide for developers and AI agents: [AGENTS.md](AGENTS.md).
-
-## 📡 Core API Routes
-
-- `/api/products`: Public storefront listing and searching.
-- `/api/admin/products`: Secure product inventory management.
-- `/api/admin/categories`: Hierarchical category controller.
-- `/api/orders`: Secure checkout and fulfillment processing.
-- `/api/auth/forgot-password` → `/api/auth/reset-password`: "Forgot password?" flow (page: `/forgot-password`).
+Every endpoint, its access rule, request body and the SSLCommerz payment flow are documented in [docs/api.md](docs/api.md). Codebase guide for developers and AI agents: [AGENTS.md](AGENTS.md). Release notes: [CHANGELOG.md](CHANGELOG.md). Licence for buyers: [LICENSE-NOTE.md](LICENSE-NOTE.md).
 
 ## 🤖 AI search and recipes
 
@@ -103,4 +95,4 @@ Safeguards:
 
 ---
 
-*Designed with ❤️ for premium grocery delivery.*
+*FreshBasket v1.0.0*

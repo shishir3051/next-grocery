@@ -5,6 +5,7 @@ import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { generateOtp, hashOtp, resendAllowedIfExpiryBefore, OTP_TTL_MS } from "@/lib/otp";
 import { normalizeEmail } from "@/lib/validation";
+import { isDemoEmail } from "@/lib/demo";
 import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 import { readJsonObject, tooManyRequests } from "@/lib/http";
 
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
     const validEmail = normalizeEmail(email);
-    if (name.trim().length > 80 || !validEmail) {
+    // Live-demo addresses (lib/demo.ts) can't be registered: that domain isn't ours.
+    if (name.trim().length > 80 || !validEmail || isDemoEmail(validEmail)) {
       return NextResponse.json({ error: "Please enter a valid name and email address" }, { status: 400 });
     }
     if (password.length < 8 || password.length > 128) {

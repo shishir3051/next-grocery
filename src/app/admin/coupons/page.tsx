@@ -190,9 +190,9 @@ export default function AdminCouponsPage() {
   const lastShown = Math.min(currentPage * itemsPerPage, filteredCoupons.length);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & toolbar (the admin shell already shows the "Coupons" page title) */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Discount coupons</h2>
           <p className="text-sm text-slate-500">Create promo codes, set spending rules and track how often they are used.</p>
@@ -212,6 +212,7 @@ export default function AdminCouponsPage() {
             />
           </div>
           <Button
+            size="sm"
             onClick={() => { resetForm(); setIsModalOpen(true); }}
             className="whitespace-nowrap"
           >
@@ -242,7 +243,7 @@ export default function AdminCouponsPage() {
               <tbody className="divide-y divide-slate-100">
                 {paginatedCoupons.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
                       {searchTerm ? `No coupons match "${searchTerm}".` : "No coupons yet. Create your first coupon to get started."}
                     </td>
                   </tr>
@@ -415,8 +416,8 @@ export default function AdminCouponsPage() {
               className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 id="coupon-modal-title" className="text-lg font-semibold text-slate-900">
+              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h2 id="coupon-modal-title" className="text-base font-semibold text-slate-900">
                   {editingCoupon ? "Edit coupon" : "Create coupon"}
                 </h2>
                 <button
@@ -425,13 +426,13 @@ export default function AdminCouponsPage() {
                   aria-label="Close"
                   className={ICON_BUTTON_CLASS}
                 >
-                  <X size={20} aria-hidden="true" />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
               <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
                 {/* Scrollable fields; the action bar below stays visible */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
                   <div>
                     <label htmlFor="coupon-code" className={LABEL_CLASS}>Coupon code</label>
                     <input id="coupon-code" required type="text" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} placeholder="e.g. SUMMER50" className={cn(INPUT_CLASS, "font-mono font-semibold")} />
@@ -440,14 +441,14 @@ export default function AdminCouponsPage() {
                   {/* Discount type as a segmented radio group (same values as the old select) */}
                   <fieldset>
                     <legend className={LABEL_CLASS}>Discount type</legend>
-                    <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-300 bg-slate-50 p-1">
+                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-300 bg-slate-50 p-1">
                       {DISCOUNT_TYPE_OPTIONS.map((option) => {
                         const isSelected = formData.discountType === option.value;
                         return (
                           <label
                             key={option.value}
                             className={cn(
-                              "flex min-h-10 cursor-pointer items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors",
+                              "flex min-h-8 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium transition-colors",
                               "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500",
                               isSelected ? "bg-white text-brand-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
                             )}
@@ -467,7 +468,7 @@ export default function AdminCouponsPage() {
                     </div>
                   </fieldset>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="coupon-value" className={LABEL_CLASS}>
                         Discount value ({formData.discountType === 'percentage' ? '%' : '৳'})
@@ -507,15 +508,15 @@ export default function AdminCouponsPage() {
                     </div>
                   </div>
 
-                  <label htmlFor="coupon-active" className="flex min-h-10 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
+                  <label htmlFor="coupon-active" className="flex min-h-9 items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700">
                     <input id="coupon-active" type="checkbox" className="h-5 w-5 cursor-pointer accent-brand-600" checked={formData.isActive} onChange={(e) => setFormData({...formData, isActive: e.target.checked})} />
                     Active (customers can use this coupon)
                   </label>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
-                  <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" loading={isLoading}>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-5 py-3">
+                  <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" size="sm" loading={isLoading}>
                     {!isLoading && <SaveIcon size={16} aria-hidden="true" />}
                     {editingCoupon ? "Save changes" : "Create coupon"}
                   </Button>

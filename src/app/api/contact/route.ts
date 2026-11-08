@@ -7,6 +7,8 @@ import { badRequest, readJsonObject, serverError, tooManyRequests } from "@/lib/
 import { normalizeEmail, optionalString, requiredString } from "@/lib/validation";
 import { checkRateLimit, clientKey } from "@/lib/rateLimit";
 import { sendPlainEmail } from "@/lib/email";
+import { demoReadOnly } from "@/lib/authGuard";
+import { isDemoEmail, isDemoModeEnabled } from "@/lib/demo";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -42,13 +44,17 @@ export async function POST(request: NextRequest) {
     if (phone === null || (phone && !/^[+\d][\d\s()-]{5,29}$/.test(phone))) return badRequest("Please enter a valid phone number.");
     if (orderRef === null) return badRequest("Order number is too long.");
 
+    // In the live demo, the shared demo accounts can't send messages: messages from demo
+    // addresses aren't masked, so they would show anyone's text to every demo visitor.
+    // Real visitors can still write in (their messages are masked in the demo admin).
+    const session = await getServerSession(authOptions);
+    if (isDemoModeEnabled() && (session?.user?.isDemo || isDemoEmail(email))) return demoReadOnly();
+
     // Limits count only valid messages, so a customer fixing a typo isn't locked out.
     const limit = await checkRateLimit(clientKey(request, "contact"), 5, HOUR);
     if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "You've sent several messages already. Please try again later or call us.");
     const perEmail = await checkRateLimit(`contact-email:${email}`, 3, HOUR);
     if (!perEmail.ok) return tooManyRequests(perEmail.retryAfterSeconds, "You've sent several messages already. We'll reply soon.");
-
-    const session = await getServerSession(authOptions);
 
     await dbConnect();
     const saved = await ContactMessage.create({

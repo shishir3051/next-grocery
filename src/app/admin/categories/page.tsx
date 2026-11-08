@@ -202,9 +202,9 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & toolbar */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Category hierarchy</h2>
           <p className="text-sm text-slate-500">Group products into top-level categories and their subcategories.</p>
@@ -223,7 +223,7 @@ export default function AdminCategoriesPage() {
                 className={cn(INPUT_CLASS, "pl-10")}
               />
             </div>
-            <Button onClick={openCreateModal} className="whitespace-nowrap">
+            <Button size="sm" onClick={openCreateModal} className="whitespace-nowrap">
               <Plus size={16} aria-hidden="true" /> New category
             </Button>
         </div>
@@ -249,7 +249,7 @@ export default function AdminCategoriesPage() {
               <tbody className="divide-y divide-slate-100">
                 {paginatedCategories.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={4} className="px-3 py-8 text-center text-sm text-slate-500">
                       {searchTerm ? `No categories match "${searchTerm}".` : "No categories yet. Create your first category to get started."}
                     </td>
                   </tr>
@@ -396,8 +396,8 @@ export default function AdminCategoriesPage() {
               className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 id="category-modal-title" className="text-lg font-semibold text-slate-900">
+              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h2 id="category-modal-title" className="text-base font-semibold text-slate-900">
                   {editingCategory ? "Edit category" : "Add new category"}
                 </h2>
                 <button
@@ -406,12 +406,12 @@ export default function AdminCategoriesPage() {
                   aria-label="Close"
                   className={ICON_BUTTON_CLASS}
                 >
-                  <X size={20} aria-hidden="true" />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
               <form onSubmit={handleSave}>
-                <div className="p-6 space-y-5">
+                <div className="p-5 space-y-4">
                   <div>
                     <label htmlFor="category-name" className={LABEL_CLASS}>Category name</label>
                     <input
@@ -448,7 +448,7 @@ export default function AdminCategoriesPage() {
                     <label htmlFor="category-icon" className={LABEL_CLASS}>Icon (emoji)</label>
                     <div className="flex items-center gap-3">
                       {/* Live preview of the emoji as it appears in the category list */}
-                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xl" aria-hidden="true">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xl" aria-hidden="true">
                         {formData.icon || '📦'}
                       </div>
                       <input
@@ -465,9 +465,9 @@ export default function AdminCategoriesPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 px-6 py-4">
-                  <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" loading={isLoading}>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 px-5 py-3">
+                  <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" size="sm" loading={isLoading}>
                     {!isLoading && <SaveIcon size={16} aria-hidden="true" />}
                     {editingCategory ? "Save changes" : "Create category"}
                   </Button>

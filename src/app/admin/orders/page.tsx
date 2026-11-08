@@ -146,9 +146,9 @@ export default function AdminOrdersPage() {
   const assignedUserName = deliveryUsers.find(u => u._id === assignedUserId)?.name;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & toolbar */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Order management</h2>
           <p className="text-sm text-slate-500">Manage and track all customer orders from here.</p>
@@ -175,7 +175,7 @@ export default function AdminOrdersPage() {
           <span className="sr-only">Loading orders…</span>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[1000px]">
               <thead>
@@ -192,14 +192,14 @@ export default function AdminOrdersPage() {
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {paginatedOrders.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">
                       {searchTerm ? `No orders match "${searchTerm}".` : "No orders yet."}
                     </td>
                   </tr>
                 )}
                 {paginatedOrders.map((order) => (
                   <tr key={order._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-900">#{order._id.slice(-8).toUpperCase()}</span>
                         <span className="text-xs text-slate-500">
@@ -207,36 +207,36 @@ export default function AdminOrdersPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <div className="flex flex-col min-w-0">
                         <span className="font-medium text-slate-900">{order.user?.name || 'Guest'}</span>
                         <span className="text-xs text-slate-500 truncate">{order.user?.email}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 tabular-nums">
+                    <td className="px-3 py-2 tabular-nums">
                       {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span className={cn(BADGE_CLASS, "capitalize", getStatusColor(order.status))}>
                         <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                        <span className={cn(BADGE_CLASS, "capitalize", getPaymentColor(order.paymentStatus))}>
                          {order.paymentStatus}
                        </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2 text-right">
                       <span className="font-semibold text-slate-900 tabular-nums">৳{order.totalAmount}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2 text-right">
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => setSelectedOrder(order)}
                         aria-label={`View order #${order._id.slice(-8).toUpperCase()}`}
-                        className="h-10"
+                        className="h-9"
                       >
                         <Eye size={16} aria-hidden="true" /> View
                       </Button>
@@ -311,24 +311,24 @@ export default function AdminOrdersPage() {
               className="relative w-full max-w-lg bg-white h-full shadow-xl flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
+              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 id="order-drawer-title" className="text-lg font-semibold text-slate-900">Order details</h2>
+                  <h2 id="order-drawer-title" className="text-base font-semibold text-slate-900">Order details</h2>
                   <p className="text-xs text-slate-500 font-mono mt-0.5 truncate">#{selectedOrder._id.toUpperCase()}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedOrder(null)}
                   aria-label="Close order details"
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                  className="flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                 >
-                  <X size={20} aria-hidden="true" />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 {/* Assignment Section */}
-                <section className="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                <section className="rounded-xl border border-slate-200 p-3">
                   <label htmlFor="assign-delivery" className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                     <Navigation size={16} className="text-slate-500" aria-hidden="true" /> Delivery partner
                   </label>
@@ -351,7 +351,7 @@ export default function AdminOrdersPage() {
                   )}
                 </section>
 
-                <section className="rounded-2xl border border-slate-200 p-4 sm:p-5" aria-labelledby="order-status-title">
+                <section className="rounded-xl border border-slate-200 p-3" aria-labelledby="order-status-title">
                   <h3 id="order-status-title" className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                     <Truck size={16} className="text-slate-500" aria-hidden="true" /> Order status
                   </h3>
@@ -365,7 +365,7 @@ export default function AdminOrdersPage() {
                           onClick={() => updateOrderStatus(selectedOrder._id, s)}
                           aria-pressed={isCurrent}
                           className={cn(
-                            "flex h-10 items-center justify-center gap-1.5 rounded-lg border px-3 text-sm font-medium capitalize transition-colors",
+                            "flex h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-sm font-medium capitalize transition-colors",
                             isCurrent
                               ? cn(getStatusColor(s), "ring-2 ring-brand-500 ring-offset-1")
                               : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50 hover:text-slate-900"
@@ -383,10 +383,10 @@ export default function AdminOrdersPage() {
                   <h3 id="order-summary-title" className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                     <ShoppingBasket size={16} className="text-slate-500" aria-hidden="true" /> Order summary
                   </h3>
-                  <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                  <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
                     {selectedOrder.items.map((item: any, idx: number) => (
-                      <li key={idx} className="flex items-center gap-3 p-3">
-                        <div className="relative w-12 h-12 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
+                      <li key={idx} className="flex items-center gap-3 px-3 py-2">
+                        <div className="relative w-10 h-10 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
                           <Image src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill className="object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -403,7 +403,7 @@ export default function AdminOrdersPage() {
                   </div>
                 </section>
 
-                <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid sm:grid-cols-2 gap-4">
                    <section className="space-y-2">
                      <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2"><Truck size={16} className="text-slate-500" aria-hidden="true" /> Shipping</h3>
                      <div className="text-sm space-y-1">
@@ -422,8 +422,8 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              <div className="px-6 py-4 border-t border-slate-200">
-                 <Button variant="secondary" fullWidth onClick={() => setSelectedOrder(null)}>Close</Button>
+              <div className="px-5 py-3 border-t border-slate-200">
+                 <Button variant="secondary" size="sm" fullWidth onClick={() => setSelectedOrder(null)}>Close</Button>
               </div>
             </motion.div>
           </div>

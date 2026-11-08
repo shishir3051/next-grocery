@@ -223,9 +223,9 @@ export default function AdminUsersPage() {
   const lastShown = Math.min(currentPage * itemsPerPage, filteredUsers.length);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & toolbar */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <h2 className="text-lg sm:text-xl font-semibold text-slate-900">User management</h2>
           <p className="text-sm text-slate-500">
@@ -246,7 +246,7 @@ export default function AdminUsersPage() {
               className={cn(INPUT_CLASS, "pl-10")}
             />
           </div>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="whitespace-nowrap">
+          <Button size="sm" onClick={() => setIsCreateModalOpen(true)} className="whitespace-nowrap">
             <Plus size={16} aria-hidden="true" /> Create user
           </Button>
         </div>
@@ -274,7 +274,7 @@ export default function AdminUsersPage() {
               <tbody className="divide-y divide-slate-100">
                 {paginatedUsers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
                       {searchTerm ? `No users match "${searchTerm}".` : "No users yet."}
                     </td>
                   </tr>
@@ -437,23 +437,23 @@ export default function AdminUsersPage() {
               aria-describedby="create-user-description"
               className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
             >
-              <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
+              <div className="px-5 py-3 border-b border-slate-200 flex items-start justify-between gap-4">
                 <div>
-                  <h2 id="create-user-title" className="text-lg font-semibold text-slate-900">Create new user</h2>
+                  <h2 id="create-user-title" className="text-base font-semibold text-slate-900">Create new user</h2>
                   <p id="create-user-description" className="text-sm text-slate-500 mt-0.5">The account is created already verified.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
                   aria-label="Close"
-                  className={cn(ICON_BUTTON_CLASS, "-mr-2 flex-shrink-0")}
+                  className={cn(ICON_BUTTON_CLASS, "-mr-2 -mt-1 flex-shrink-0")}
                 >
-                  <X size={20} aria-hidden="true" />
+                  <X size={16} aria-hidden="true" />
                 </button>
               </div>
 
               <form onSubmit={handleCreateUser} className="flex min-h-0 flex-1 flex-col">
-                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                <div className="flex-1 overflow-y-auto p-5 space-y-4">
                   <div>
                     <label htmlFor="new-user-name" className={LABEL_CLASS}>Full name</label>
                     <input
@@ -510,9 +510,9 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
-                  <Button variant="secondary" disabled={createLoading} onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" loading={createLoading}>Create account</Button>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-5 py-3">
+                  <Button variant="secondary" size="sm" disabled={createLoading} onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" size="sm" loading={createLoading}>Create account</Button>
                 </div>
               </form>
             </motion.div>

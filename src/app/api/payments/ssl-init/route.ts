@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import { createHmac, randomUUID } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
@@ -8,8 +8,10 @@ import { Settings } from "@/models/Settings";
 import { User } from "@/models/User";
 import { parseOrderRequest, buildOrderQuote, consumeCoupon, releaseCoupon } from "@/lib/orders";
 import { SSLCOMMERZ_INIT_URL } from "@/lib/sslcommerz";
-import { checkRateLimit } from "@/lib/rateLimit";
-import { readJsonObject, tooManyRequests } from "@/lib/http";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
+import { jsonError, readJsonObject, tooManyRequests } from "@/lib/http";
+import { isDemoModeEnabled } from "@/lib/demo";
+import { demoShippingAddress } from "@/lib/demoOrder";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +20,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const limit = await checkRateLimit(`ssl-init:${session.user.id}`, 10, 10 * 60 * 1000);
+    // Live demo: the shared demo customer's orders never reserve coupon uses or stock.
+    const isDemoOrder = Boolean(session.user.isDemo) && isDemoModeEnabled();
+
+    // Demo orders are deleted after 3 days with no refund trail, so the live demo may only
+    // pay through the SSLCommerz sandbox, never with real money.
+    if (isDemoOrder && process.env.IS_LIVE === 'true') {
+      return jsonError("Online payment in the live demo works only with the SSLCommerz sandbox. Please choose cash on delivery.", 403);
+    }
+
+    // The shared demo customer is limited per visitor, so one visitor can't block the rest.
+    const limitKey = isDemoOrder ? `ssl-init-demo:${clientIp(request.headers)}` : `ssl-init:${session.user.id}`;
+    const limit = await checkRateLimit(limitKey, 10, 10 * 60 * 1000);
     if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many payment attempts. Please wait a few minutes.");
+
+    // A new IP must not mean unlimited demo orders, so all demo visitors together also share
+    // one ceiling (six visitors' worth). Checked second, so requests refused above don't count.
+    if (isDemoOrder) {
+      const overall = await checkRateLimit(`ssl-init-demo-all:${session.user.id}`, 60, 10 * 60 * 1000);
+      if (!overall.ok) return tooManyRequests(overall.retryAfterSeconds, "The live demo is busy right now. Please try again in a few minutes.");
+    }
 
     await dbConnect();
 
@@ -42,18 +62,25 @@ export async function POST(request: NextRequest) {
     const quoted = await buildOrderQuote(parsed.value, settings);
     if (!quoted.ok) return NextResponse.json({ error: quoted.error }, { status: quoted.status });
     const quote = quoted.value;
-    const { shippingAddress } = parsed.value;
+    // Every demo visitor sees the demo customer's orders, so a demo order stores (and sends
+    // to the gateway) a sample address and no note, never what was typed.
+    const shippingAddress = isDemoOrder ? demoShippingAddress() : parsed.value.shippingAddress;
 
     // Unguessable id: it is the key the payment callback uses to find this order.
     const tran_id = `SSLC_${randomUUID()}`;
+    // For the fail/cancel URLs (see cancelSignature). Computed before anything is reserved,
+    // so a missing secret fails without side effects.
+    const cancelSig = cancelSignature(tran_id);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+    const couponId = isDemoOrder ? null : quote.couponId;
 
     // Reserve the coupon now so its usage limit holds across concurrent checkouts.
     // It is released again if the payment fails or is cancelled (see ssl-status).
-    if (quote.couponId && !(await consumeCoupon(quote.couponId))) {
+    if (couponId && !(await consumeCoupon(couponId))) {
       return NextResponse.json({ error: "This coupon has reached its usage limit." }, { status: 409 });
     }
-    const releaseReservedCoupon = async () => { if (quote.couponId) await releaseCoupon(quote.couponId); };
+    const releaseReservedCoupon = async () => { if (couponId) await releaseCoupon(couponId); };
 
     // Create provisional order
     const order = await Order.create({
@@ -65,9 +92,10 @@ export async function POST(request: NextRequest) {
       paymentProvider: 'sslcommerz',
       paymentProviderId: tran_id,
       paymentStatus: 'unpaid',
-      deliveryNote: parsed.value.deliveryNote,
+      deliveryNote: isDemoOrder ? null : parsed.value.deliveryNote,
       couponCode: quote.couponCode,
       discountAmount: quote.discount,
+      isDemo: isDemoOrder,
     }).catch(async (error) => { await releaseReservedCoupon(); throw error; });
 
     // Construct form data as URLSearchParams
@@ -78,8 +106,8 @@ export async function POST(request: NextRequest) {
     formData.append('currency', 'BDT');
     formData.append('tran_id', tran_id);
     formData.append('success_url', `${baseUrl}/api/payments/ssl-status?status=success`);
-    formData.append('fail_url', `${baseUrl}/api/payments/ssl-status?status=fail`);
-    formData.append('cancel_url', `${baseUrl}/api/payments/ssl-status?status=cancel`);
+    formData.append('fail_url', `${baseUrl}/api/payments/ssl-status?status=fail&sig=${cancelSig}`);
+    formData.append('cancel_url', `${baseUrl}/api/payments/ssl-status?status=cancel&sig=${cancelSig}`);
     formData.append('ipn_url', `${baseUrl}/api/payments/ssl-status?status=ipn`);
 
     // Customer Info
@@ -134,4 +162,15 @@ export async function POST(request: NextRequest) {
     console.error("SSLCommerz Init Error:", error);
     return NextResponse.json({ error: "Failed to initiate payment" }, { status: 500 });
   }
+}
+
+/**
+ * HMAC of the tran_id, added to the fail/cancel URLs. ssl-status cancels an order only when
+ * it matches, so a request that merely knows the tran_id (e.g. from an order list) can't.
+ * Must stay in step with cancelSignatureMatches in ssl-status.
+ */
+function cancelSignature(tranId: string): string {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error("NEXTAUTH_SECRET is required to sign payment callbacks");
+  return createHmac("sha256", secret).update(tranId).digest("hex");
 }

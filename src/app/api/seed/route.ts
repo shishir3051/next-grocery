@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { seed } from '@/lib/seed';
-import { requireAdmin } from '@/lib/authGuard';
+import { requireRoleForWrite } from '@/lib/authGuard';
 
 /**
  * Wipes and re-seeds categories, products and hero slides.
@@ -10,9 +10,8 @@ export async function POST() {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const auth = await requireRoleForWrite('admin');
+  if ('response' in auth) return auth.response;
 
   try {
     await seed();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { User } from "@/models/User";
-import { requireUser, PRIVATE_USER_FIELDS } from "@/lib/authGuard";
+import { requireUser, requireRoleForWrite, PRIVATE_USER_FIELDS } from "@/lib/authGuard";
 import { badRequest, notFound, readJsonObject, serverError } from "@/lib/http";
 import { optionalImage, optionalString, requiredString } from "@/lib/validation";
 
@@ -24,7 +24,8 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await requireUser();
+    // Demo accounts are shared by every visitor, so their profile can't be edited in the live demo.
+    const auth = await requireRoleForWrite();
     if ("response" in auth) return auth.response;
 
     const body = await readJsonObject(request);

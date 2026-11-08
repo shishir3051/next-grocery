@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Loader2, Construction, Mail, Leaf } from "lucide-react";
 import useSWR from "swr";
@@ -10,13 +11,18 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const reduceMotion = useReducedMotion();
+  // The /showcase landing page (live demo only) is about the product, not the store:
+  // it is never behind maintenance mode and must render straight away (no spinner).
+  const isShowcase = usePathname()?.startsWith("/showcase") ?? false;
 
-  const { data, error, isLoading } = useSWR("/api/settings", fetcher, {
+  const { data, isLoading } = useSWR(isShowcase ? null : "/api/settings", fetcher, {
     refreshInterval: 10000, // Poll every 10 seconds
     revalidateOnFocus: true,
   });
 
   const settings = data?.settings;
+
+  if (isShowcase) return <>{children}</>;
 
 
   if (isLoading) {

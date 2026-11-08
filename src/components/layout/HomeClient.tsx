@@ -86,6 +86,7 @@ export default function HomeClient({ initialProducts, initialCategories }: HomeC
   const [location, setLocation] = useState('Dhaka');
   const [loading, setLoading] = useState(false); // Initially false because data is pre-fetched
   const [aiResults, setAiResults] = useState<any[] | null>(null);
+  const [aiQuery, setAiQuery] = useState(''); // what the AI search was for; shown with its results
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const { items } = useCart();
@@ -287,8 +288,9 @@ export default function HomeClient({ initialProducts, initialCategories }: HomeC
 
             <div className="flex items-center gap-3 mb-6 flex-wrap">
               <SmartSearch
-                onResults={(results) => {
+                onResults={(results, query) => {
                   setAiResults(results);
+                  setAiQuery(query);
                   setSearchQuery('');
                 }}
                 onReset={() => setAiResults(null)}
@@ -315,7 +317,10 @@ export default function HomeClient({ initialProducts, initialCategories }: HomeC
                 {aiResults && (
                   <p className="flex items-center gap-1.5 text-sm text-slate-600">
                     <Sparkles size={16} className="text-brand-600" aria-hidden="true" />
-                    AI found <span className="font-semibold text-slate-900">{aiResults.length}</span> {aiResults.length === 1 ? 'product' : 'products'}
+                    <span>
+                      AI found <span className="font-semibold text-slate-900">{aiResults.length}</span> {aiResults.length === 1 ? 'product' : 'products'}
+                      {aiQuery && <> for <span className="font-semibold text-slate-900">&ldquo;{aiQuery}&rdquo;</span></>}
+                    </span>
                   </p>
                 )}
               </div>
@@ -329,7 +334,7 @@ export default function HomeClient({ initialProducts, initialCategories }: HomeC
               <SkeletonGrid count={10} />
             ) : displayedProducts.length === 0 && (searchQuery || aiResults || activeSlug !== 'all') ? (
               <EmptyResults
-                query={searchQuery}
+                query={searchQuery || (aiResults ? aiQuery : '')}
                 onReset={() => {
                   setAiResults(null);
                   setSearchQuery('');

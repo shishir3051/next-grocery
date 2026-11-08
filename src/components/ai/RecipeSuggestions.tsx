@@ -40,7 +40,7 @@ function cartNamesFor(items: { name: string }[]): string[] {
 }
 
 export default function RecipeSuggestions() {
-  const { items, addItem, setIsCartOpen } = useCart();
+  const { items, addItem } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -116,9 +116,9 @@ export default function RecipeSuggestions() {
 
   const handleAdd = (product: RecipeProduct) => {
     // Matches what ProductCard passes: price is already the effective (sale) price.
+    // addItem only shows a toast (the cart drawer stays closed), so the shopper stays in this
+    // dialog and can keep adding ingredients.
     addItem({ _id: product._id, name: product.name, price: product.price, unit: product.unit, image: product.image ?? undefined, stock: product.stock });
-    // addItem opens the cart drawer; keep the shopper in this dialog so they can add more ingredients.
-    setIsCartOpen(false);
   };
 
   // Cancel any in-flight request when the component unmounts

@@ -38,15 +38,18 @@ interface OrderForCancel {
   items: { productId: unknown; quantity: number }[];
   couponCode?: string | null;
   walletAmount?: number;
+  isDemo?: boolean;
 }
 
 /**
  * Undoes what placing the order reserved: stock, the coupon use and wallet credit.
  * - Cash on delivery reserves stock, coupon and wallet when the order is placed.
  * - SSLCommerz reserves the coupon at checkout and stock only once payment is confirmed.
+ * - Live-demo orders reserve nothing, so there is nothing to give back.
  * Money paid online is NOT refunded automatically; that is logged for manual refund.
  */
 async function releaseReservations(order: OrderForCancel) {
+  if (order.isDemo) return;
   const stockReserved = order.paymentProvider === "cod" || order.paymentStatus === "paid";
   if (stockReserved) {
     await releaseStock(order.items.map(i => ({ productId: String(i.productId), quantity: i.quantity })));
@@ -102,4 +105,22 @@ export async function transitionOrder(
 
   if (to === "cancelled") await releaseReservations(current);
   return { order: updated };
+}
+
+const DEMO_PENDING_TTL_MS = 30 * 60 * 1000; // an unattended demo checkout is cancelled after 30 minutes
+const DEMO_ORDER_TTL_MS = 3 * 24 * 60 * 60 * 1000; // demo orders are deleted after 3 days
+
+/**
+ * Keeps the shared live-demo customer tidy (lib/demo.ts): cancels demo orders left pending
+ * for 30+ minutes and deletes demo orders older than 3 days. Demo orders reserve no stock,
+ * coupon or wallet credit, so they can be cancelled or deleted without side effects.
+ * A newer pending order is never cancelled early: it may be a visitor's demo still in progress.
+ */
+export async function cleanupDemoOrders(userId: string): Promise<void> {
+  const now = Date.now();
+  await Order.deleteMany({ isDemo: true, createdAt: { $lt: new Date(now - DEMO_ORDER_TTL_MS) } });
+  await Order.updateMany(
+    { user: userId, isDemo: true, status: "pending", createdAt: { $lt: new Date(now - DEMO_PENDING_TTL_MS) } },
+    { $set: { status: "cancelled" } }
+  );
 }

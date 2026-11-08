@@ -4,8 +4,9 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import { Coupon } from "@/models/Coupon";
 import { computeCouponDiscount } from "@/lib/orders";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import { readJsonObject, tooManyRequests } from "@/lib/http";
+import { isDemoModeEnabled } from "@/lib/demo";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,8 +15,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Stops guessing coupon codes by brute force.
-    const limit = await checkRateLimit(`coupon-validate:${session.user.id}`, 20, 10 * 60 * 1000);
+    // Stops guessing coupon codes by brute force. The shared live-demo customer is limited
+    // per visitor, so one visitor can't use up the limit for everyone else.
+    const isDemo = Boolean(session.user.isDemo) && isDemoModeEnabled();
+    const limitKey = isDemo ? `coupon-validate-demo:${clientIp(request.headers)}` : `coupon-validate:${session.user.id}`;
+    const limit = await checkRateLimit(limitKey, 20, 10 * 60 * 1000);
     if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many coupon attempts. Please wait a few minutes.");
 
     const { code, subtotal } = (await readJsonObject(request)) ?? {};

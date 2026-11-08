@@ -54,7 +54,9 @@ The container listens on `127.0.0.1:3000` only, runs as a non-root user, and has
 
 ```
 shop.example.com {
-    reverse_proxy 127.0.0.1:3000
+    reverse_proxy 127.0.0.1:3000 {
+        header_up X-Real-IP {remote_host}
+    }
 }
 ```
 
@@ -70,8 +72,12 @@ location / {
 }
 ```
 
-Do **not** expose port 3000 directly to the internet: without a proxy that overwrites
-`X-Real-IP` / `X-Forwarded-For`, clients could spoof their IP to dodge rate limits.
+The rate limiter takes the client IP from `X-Real-IP`, then `X-Forwarded-For`, so the proxy
+must **overwrite** both headers with the address of the actual connection, never pass on the
+values a client sent. Both examples above do this: Caddy sets `X-Forwarded-For` itself but
+forwards a client's `X-Real-IP` unchanged, hence the `header_up` line. Do **not** expose
+port 3000 directly to the internet: without such a proxy, clients could spoof their IP to
+dodge rate limits.
 
 Update: `git pull && docker compose up -d --build`.
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { isDemoModeEnabled } from "@/lib/demo";
 
 /**
  * Route protection (Next.js 16 "proxy", formerly middleware).
@@ -21,7 +22,9 @@ export async function proxy(request: NextRequest) {
 
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
-  if (!token) {
+  // getToken skips the jwt callback, so a one-click demo session (revoked there once the
+  // live demo is off, see lib/auth.ts) is treated as signed out here too.
+  if (!token || (token.demoLogin && !isDemoModeEnabled())) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);

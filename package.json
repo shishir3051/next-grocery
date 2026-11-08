@@ -13,7 +13,10 @@
     "typecheck": "tsc --noEmit",
     "audit:prod": "npm audit --omit=dev",
     "promote-admin": "node --env-file=.env.local scripts/promote-admin.mjs",
-    "normalize-emails": "node --env-file=.env.local scripts/normalize-emails.mjs"
+    "normalize-emails": "node --env-file=.env.local scripts/normalize-emails.mjs",
+    "db:indexes": "node database/indexes.js",
+    "db:seed": "node database/seed.js",
+    "db:setup": "npm run db:indexes && npm run db:seed -- --demo-users"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
