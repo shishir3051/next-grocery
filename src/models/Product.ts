@@ -31,5 +31,7 @@ const ProductSchema = new Schema({
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ stock: 1 });
 ProductSchema.index({ name: 'text', description: 'text' });
+// Admin products table: newest first, one page at a time.
+ProductSchema.index({ createdAt: -1, _id: -1 });
 
 export const Product = models.Product || model('Product', ProductSchema);

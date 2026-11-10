@@ -3,7 +3,17 @@ import { Product, Category } from "@/models/Product";
 import { getBase64FromUrl } from "@/lib/imageUtils";
 import { requireRole, requireRoleForWrite } from "@/lib/authGuard";
 import { badRequest, isDuplicateKeyError, notFound, readJsonObject, serverError } from "@/lib/http";
-import { isHttpsUrl, isObjectId, optionalImage, optionalString, requiredString, slugify, toNumber } from "@/lib/validation";
+import { withImageUrls } from "@/lib/productImages";
+import {
+  escapeRegex,
+  isHttpsUrl,
+  isObjectId,
+  optionalImage,
+  optionalString,
+  requiredString,
+  slugify,
+  toNumber,
+} from "@/lib/validation";
 
 const MAX_PRICE = 1_000_000;
 const MAX_STOCK = 1_000_000;
@@ -95,13 +105,67 @@ async function parseProduct(body: Record<string, unknown>, partial: boolean) {
   return { value: out };
 }
 
-export async function GET() {
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+const MAX_SEARCH_LENGTH = 64;
+
+/** Fields shown in the products table. Never the base64 `imageData` (see lib/productImages). */
+const LIST_FIELDS = "name unit price discountPrice stock isOrganic isHalal images category createdAt updatedAt";
+
+/**
+ * GET /api/admin/products?page=1&pageSize=10&q=apple → one page of products, newest first.
+ * GET /api/admin/products?id=<productId>           → one full product, for the edit form.
+ *
+ * Search and pagination run in MongoDB, so the response stays small however big the
+ * catalogue gets. It used to return every product with its full base64 photo.
+ */
+export async function GET(request: NextRequest) {
   try {
     const auth = await requireRole("admin");
     if ("response" in auth) return auth.response;
 
-    const products = await Product.find().populate('category', 'name slug').sort({ createdAt: -1 }).lean();
-    return NextResponse.json({ products });
+    const params = request.nextUrl.searchParams;
+    const id = params.get("id");
+    if (id !== null) {
+      if (!isObjectId(id)) return badRequest("Invalid product ID");
+      const product = await Product.findById(id).populate("category", "name slug").lean();
+      if (!product) return notFound("Product not found");
+      return NextResponse.json({ product });
+    }
+
+    const page = toNumber(params.get("page") ?? 1, { min: 1, max: 10_000, integer: true }) ?? 1;
+    const pageSize =
+      toNumber(params.get("pageSize") ?? DEFAULT_PAGE_SIZE, { min: 1, max: MAX_PAGE_SIZE, integer: true }) ??
+      DEFAULT_PAGE_SIZE;
+    const q = (params.get("q") ?? "").trim().slice(0, MAX_SEARCH_LENGTH);
+
+    // Search by product name or category name, literally (escaped, so no regex tricks).
+    let filter: Record<string, unknown> = {};
+    if (q) {
+      const pattern = new RegExp(escapeRegex(q), "i");
+      const categories = await Category.find({ name: pattern }).select("_id").lean<{ _id: unknown }[]>();
+      filter = { $or: [{ name: pattern }, { category: { $in: categories.map((category) => category._id) } }] };
+    }
+
+    const [total, rows] = await Promise.all([
+      Product.countDocuments(filter),
+      Product.find(filter)
+        .select(LIST_FIELDS)
+        .populate("category", "name slug")
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .lean<{ _id: unknown; updatedAt?: Date }[]>(),
+    ]);
+    const products = await withImageUrls(rows);
+
+    return NextResponse.json({
+      products,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    });
   } catch (error) {
     return serverError(error, "Admin products fetch error");
   }

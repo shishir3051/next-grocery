@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/mongodb';
 import { Product, Category } from '@/models/Product';
+import { withImageUrls } from '@/lib/productImages';
 import { escapeRegex } from '@/lib/validation';
 
 export async function getCategories() {
@@ -36,7 +37,10 @@ export async function getProducts(categorySlug?: string) {
         }
       }
     }
-    const products = await Product.find(query).populate('category').lean();
+    // Without the base64 photos: each product gets a short image URL instead (lib/productImages).
+    const products = await withImageUrls(
+      await Product.find(query).select('-imageData').populate('category').lean<{ _id: unknown; updatedAt?: Date }[]>()
+    );
     return JSON.parse(JSON.stringify(products));
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -60,8 +64,8 @@ export async function searchProducts(searchTerm: string) {
         { name: { $regex: pattern, $options: 'i' } },
         { description: { $regex: pattern, $options: 'i' } }
       ]
-    }).populate('category').lean();
-    return JSON.parse(JSON.stringify(products));
+    }).select('-imageData').populate('category').lean<{ _id: unknown; updatedAt?: Date }[]>();
+    return JSON.parse(JSON.stringify(await withImageUrls(products)));
   } catch (error) {
     console.error('Error searching products:', error);
     return [];

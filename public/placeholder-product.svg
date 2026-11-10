@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Product photo coming soon">
+  <rect width="400" height="400" fill="#f1f5f4"/>
+  <g fill="none" stroke="#94a3b8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 168h144l-14 128H142z"/>
+    <path d="M160 168v-20a40 40 0 0 1 80 0v20"/>
+  </g>
+  <path d="M232 214c-30 2-52 22-52 50 26 0 48-20 52-50z" fill="#14b8a6" opacity=".55"/>
+</svg>

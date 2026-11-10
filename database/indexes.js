@@ -27,6 +27,8 @@ const INDEXES = {
     { key: { category: 1 } },
     { key: { stock: 1 } },
     { key: { name: "text", description: "text" } },
+    // Admin products table: newest first, one page at a time.
+    { key: { createdAt: -1, _id: -1 } },
   ],
   orders: [
     { key: { createdAt: -1 } },

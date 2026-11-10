@@ -2,6 +2,23 @@
 
 All notable changes to FreshBasket. Versions follow [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+- Admin > Products loads 10 products per page, with paging and search done on the server, and
+  no longer sends every product's base64 photo with the list (one page went from about 18.7 MB
+  to about 4 KB in a 90-product test). Shows loading, updating and error states.
+- Product photos are served from `/media/products/<id>/<version>` with a one-year cache.
+  Store product lists and the admin dashboard no longer carry photo data.
+- The header cart icon shows on every store page for every account, including admins, with
+  the item count. The "Added to cart" toast stays for 5 seconds.
+
+### Fixed
+- Product photos that fail to load show a placeholder instead of a broken image.
+
+### Upgrade note
+- Run `npm run db:indexes` once to add the new `{ createdAt: -1, _id: -1 }` product index.
+
 ## [1.1.0] — 2026-11-08
 
 ### Added

@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useCart } from '@/context/CartContext';
 import { X, Trash2, ShoppingCart, Zap, ArrowRight, CheckCircle2, ShieldCheck, Minus, Plus } from 'lucide-react';
-import Image from 'next/image';
+import SafeImage from '@/components/ui/SafeImage';
 import Button from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 
@@ -136,7 +136,7 @@ export default function CartDrawer() {
                 <li key={item.id} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3">
                   {item.image && (
                     <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-50">
-                      <Image src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill className="object-cover" />
+                      <SafeImage src={item.imageData || item.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=100'} alt={item.name} fill className="object-cover" />
                     </div>
                   )}
                   <div className="flex min-w-0 flex-1 flex-col">

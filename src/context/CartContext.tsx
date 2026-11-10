@@ -83,6 +83,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             </span>
             <button
               type="button"
+              data-testid="toast-view-cart"
               onClick={() => { toast.dismiss(t.id); setIsCartOpen(true); }}
               className="min-h-11 shrink-0 rounded-lg px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
@@ -90,7 +91,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             </button>
           </span>
         ),
-        { id: 'cart-feedback', duration: 2500 }
+        // Long enough to reach "View cart"; the header cart button is always there as well.
+        { id: 'cart-feedback', duration: 5000 }
       );
     }
 

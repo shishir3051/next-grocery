@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import SafeImage from '@/components/ui/SafeImage';
 import { useId, useRef, useState } from 'react';
 import { Heart, Minus, Plus, ShoppingCart, Truck, ShieldCheck } from 'lucide-react';
 import Dialog from '@/components/ui/Dialog';
@@ -82,7 +82,7 @@ export default function ProductDetailsDialog({ product, imageUrl, open, onClose 
       <div className="grid md:grid-cols-2">
         {/* Image: capped on phones so the details and actions stay in view */}
         <div className="relative aspect-[4/3] max-h-[40dvh] w-full bg-gradient-to-br from-slate-50 to-brand-50 md:aspect-auto md:max-h-none md:min-h-[420px]">
-          <Image
+          <SafeImage
             src={imageUrl}
             alt={product.name}
             fill

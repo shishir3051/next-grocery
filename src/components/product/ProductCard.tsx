@@ -1,7 +1,7 @@
 'use client';
 import { useCart } from '@/context/CartContext';
 import { Plus, Minus, Heart } from 'lucide-react';
-import Image from 'next/image';
+import SafeImage from '@/components/ui/SafeImage';
 import { useState } from 'react';
 import { useWishlist } from '@/context/WishlistContext';
 import { getEffectivePrice, getSavings } from '@/lib/pricing';
@@ -61,7 +61,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-brand-200 hover:shadow-md">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-brand-50">
-        <Image
+        <SafeImage
           src={imageUrl}
           alt={product.name}
           fill

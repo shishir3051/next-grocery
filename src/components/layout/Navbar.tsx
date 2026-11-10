@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
 import LocationModal from './LocationModal';
+import { cn } from '@/lib/cn';
 
 /**
  * Site header.
@@ -80,7 +81,6 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
   };
 
   const role = session?.user?.role;
-  const showCart = status !== 'authenticated' || role !== 'admin';
 
   return (
     <header
@@ -245,21 +245,27 @@ export default function Navbar({ searchQuery, onSearchChange, location, onLocati
           )}
         </div>
 
-        {showCart && (
-          <button
-            onClick={() => setIsCartOpen(true)}
-            aria-label={`Open cart, ${totalItems} ${totalItems === 1 ? 'item' : 'items'}, ৳${subtotal.toFixed(0)}`}
-            className="relative flex items-center gap-2 h-11 px-3 sm:px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-sm flex-shrink-0"
-          >
-            <ShoppingCart size={18} aria-hidden="true" />
-            <span className="hidden sm:block tabular-nums">৳{subtotal.toFixed(0)}</span>
-            {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 bg-accent-400 text-slate-900 text-[11px] font-bold rounded-full grid place-items-center ring-2 ring-white tabular-nums" aria-hidden="true">
-                {totalItems}
-              </span>
+        {/* Cart: always visible, for every role, with the item count. */}
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          aria-label={`Open cart, ${totalItems} ${totalItems === 1 ? 'item' : 'items'}, ৳${subtotal.toFixed(0)}`}
+          data-testid="header-cart"
+          className="relative flex items-center gap-2 h-11 px-3 sm:px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-sm flex-shrink-0"
+        >
+          <ShoppingCart size={18} aria-hidden="true" />
+          <span className="hidden sm:block">Cart</span>
+          <span className="hidden md:block tabular-nums font-medium text-white/85">৳{subtotal.toFixed(0)}</span>
+          <span
+            className={cn(
+              "absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 text-[11px] font-bold rounded-full grid place-items-center ring-2 ring-white tabular-nums",
+              totalItems > 0 ? "bg-accent-400 text-slate-900" : "bg-slate-200 text-slate-700"
             )}
-          </button>
-        )}
+            aria-hidden="true"
+          >
+            {totalItems}
+          </span>
+        </button>
       </div>
     </header>
   );

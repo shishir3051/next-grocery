@@ -14,44 +14,89 @@ import {
   Upload,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
   Save as SaveIcon
 } from "lucide-react";
 import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { LABEL_CLASS, INPUT_CLASS, TH_CLASS, PAGE_BUTTON_CLASS } from "@/components/admin/adminStyles";
 
+const PAGE_SIZE = 10;
+const SEARCH_DELAY_MS = 300;
+
+/** A row of the products table. `imageData` is a short image URL here, never base64. */
+type ProductRow = {
+  _id: string;
+  name: string;
+  unit?: string;
+  price: number;
+  discountPrice?: number;
+  stock: number;
+  images?: string[];
+  imageData?: string;
+  category?: { name?: string } | string | null;
+};
+
+type ProductPage = { products: ProductRow[]; total: number; totalPages: number };
+
+type CategoryNode = { _id: string; name: string; subcategories?: CategoryNode[] };
+type CategoryOption = CategoryNode & { displayName: string };
+
+const EMPTY_FORM = {
+  name: "",
+  price: "",
+  discountPrice: "",
+  category: "",
+  unit: "1 kg",
+  stock: "100",
+  description: "",
+  imageData: "",
+  isOrganic: false,
+  isHalal: false
+};
+
+function categoryName(category: ProductRow["category"]) {
+  return (typeof category === "object" ? category?.name : category) || "";
+}
+
+/** Thumbnail: our own image URLs are resized by next/image; outside URLs are shown as they are. */
+function Thumbnail({ product }: { product: ProductRow }) {
+  const src = product.imageData || product.images?.[0];
+  if (!src) return <ImageIcon className="w-5 h-5 text-slate-400 absolute inset-0 m-auto" aria-hidden="true" />;
+  return <SafeImage src={src} alt="" fill sizes="40px" unoptimized={!src.startsWith("/")} className="object-cover" />;
+}
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Table data: one page at a time from the server.
+  const [rows, setRows] = useState<ProductRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
+  // The request the table shows. While it differs from the one asked for, a load is running.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+
+  // Search (debounced) and pagination
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [categories, setCategories] = useState<any[]>([]);
-  
-  // Pagination State
+  const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  
-  // Form State
-  const [formData, setFormData] = useState({
-    name: "",
-    price: "",
-    discountPrice: "",
-    category: "",
-    unit: "1 kg",
-    stock: "100",
-    description: "",
-    imageData: "",
-    isOrganic: false,
-    isHalal: false
-  });
+
+  // Add / edit modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const originalImageRef = useRef("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Modal State
+  // Confirmation modal
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -66,76 +111,138 @@ export default function AdminProductsPage() {
     type: 'warning'
   });
 
+  // Categories for the form's dropdown, flattened as "Parent — Child".
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
+    fetch("/api/categories")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((data: { categories: CategoryNode[] }) => {
+        const flat: CategoryOption[] = [];
+        for (const cat of data.categories) {
+          flat.push({ ...cat, displayName: cat.name });
+          for (const sub of cat.subcategories ?? []) flat.push({ ...sub, displayName: `${cat.name} — ${sub.name}` });
+        }
+        setCategories(flat);
+        if (flat.length > 0) setFormData((prev) => ({ ...prev, category: prev.category || flat[0].name }));
+      })
+      .catch((error) => console.error("Fetch categories error:", error));
   }, []);
 
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch("/api/categories");
-      const data = await res.json();
-      if (res.ok) {
-        // Flatten the category tree for the dropdown
-        const flatCategories: any[] = [];
-        data.categories.forEach((cat: any) => {
-          flatCategories.push({ ...cat, displayName: cat.name });
-          if (cat.subcategories && cat.subcategories.length > 0) {
-            cat.subcategories.forEach((sub: any) => {
-              flatCategories.push({ ...sub, displayName: `${cat.name} — ${sub.name}` });
-            });
-          }
-        });
-        
-        setCategories(flatCategories);
-        if (flatCategories.length > 0) {
-            setFormData(prev => ({ ...prev, category: prev.category || flatCategories[0].name }));
-        }
-      }
-    } catch (e) { console.error(e); }
+  // Wait until typing pauses before searching, and start again from page 1.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQuery(searchTerm.trim());
+      setCurrentPage(1);
+    }, SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const requestKey = `${currentPage}|${query}|${reloadKey}`;
+  const isFetching = loadedKey !== requestKey;
+
+  // Load the current page. A newer request cancels an older one still in flight.
+  useEffect(() => {
+    const controller = new AbortController();
+    const key = `${currentPage}|${query}|${reloadKey}`;
+    const params = new URLSearchParams({ page: String(currentPage), pageSize: String(PAGE_SIZE) });
+    if (query) params.set("q", query);
+
+    fetch(`/api/admin/products?${params}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: ProductPage = await res.json();
+        setRows(data.products);
+        setTotal(data.total);
+        setTotalPages(data.totalPages);
+        setStatus("ready");
+        setLoadedKey(key);
+        // After deleting the last product on the last page, step back a page.
+        if (currentPage > data.totalPages) setCurrentPage(data.totalPages);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error("Fetch products error:", error);
+        setStatus("error");
+        setLoadedKey(key);
+      });
+
+    return () => controller.abort();
+  }, [currentPage, query, reloadKey]);
+
+  const reload = () => setReloadKey((key) => key + 1);
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingProduct(null);
+    setSaveError(null);
   };
 
-  const fetchProducts = async () => {
+  const openCreateModal = () => {
+    setEditingProduct(null);
+    setSaveError(null);
+    originalImageRef.current = "";
+    setFormData({ ...EMPTY_FORM, category: categories[0]?.name || "" });
+    setIsModalOpen(true);
+  };
+
+  /** The table has no descriptions or full photos, so the form loads the whole product first. */
+  const openEditModal = async (product: ProductRow) => {
+    setEditingProduct(product);
+    setSaveError(null);
+    setIsModalOpen(true);
+    setIsLoadingProduct(true);
     try {
-      const res = await fetch("/api/admin/products");
-      const data = await res.json();
-      if (res.ok) {
-        setProducts(data.products);
-      }
+      const res = await fetch(`/api/admin/products?id=${product._id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { product: full } = await res.json();
+      const image = full.imageData || full.images?.[0] || "";
+      originalImageRef.current = image;
+      setFormData({
+        name: full.name,
+        price: String(full.price),
+        discountPrice: String(full.discountPrice || ""),
+        category: categoryName(full.category),
+        unit: full.unit,
+        stock: String(full.stock),
+        description: full.description || "",
+        imageData: image,
+        isOrganic: !!full.isOrganic,
+        isHalal: !!full.isHalal
+      });
     } catch (error) {
-      console.error("Fetch products error:", error);
+      console.error("Load product error:", error);
+      setSaveError("Couldn't load this product. Close the form and try again.");
     } finally {
-      setIsLoading(false);
+      setIsLoadingProduct(false);
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSaving(true);
+    setSaveError(null);
     try {
-      const method = editingProduct ? "PUT" : "POST";
-      const body = editingProduct ? { ...formData, id: editingProduct._id } : formData;
-      
+      const body: Record<string, unknown> = editingProduct ? { ...formData, id: editingProduct._id } : { ...formData };
+      // Don't send the (large) photo again when it wasn't changed.
+      if (editingProduct && formData.imageData === originalImageRef.current) delete body.imageData;
+
       const res = await fetch("/api/admin/products", {
-        method,
+        method: editingProduct ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (res.ok) {
-        setIsModalOpen(false);
-        setEditingProduct(null);
-        setFormData({
-            name: "", price: "", discountPrice: "", category: categories[0]?.name || "", 
-            unit: "1 kg", stock: "100", description: "", imageData: "",
-            isOrganic: false, isHalal: false
-        });
-        fetchProducts();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(data.error || data.message || "Couldn't save the product. Please try again.");
+        return;
       }
+      closeModal();
+      setFormData({ ...EMPTY_FORM, category: categories[0]?.name || "" });
+      reload();
     } catch (error) {
       console.error("Save error:", error);
+      setSaveError("Couldn't save the product. Check your connection and try again.");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -148,32 +255,12 @@ export default function AdminProductsPage() {
         onConfirm: async () => {
           try {
             const res = await fetch(`/api/admin/products?id=${id}`, { method: "DELETE" });
-            if (res.ok) {
-              fetchProducts();
-            }
+            if (res.ok) reload();
           } catch (error) {
             console.error("Delete error:", error);
           }
         }
     });
-  };
-
-  const openEditModal = (product: any) => {
-    setEditingProduct(product);
-    const categoryName = typeof product.category === 'object' ? product.category?.name : product.category;
-    setFormData({
-      name: product.name,
-      price: product.price.toString(),
-      discountPrice: (product.discountPrice || "").toString(),
-      category: categoryName || "",
-      unit: product.unit,
-      stock: product.stock.toString(),
-      description: product.description || "",
-      imageData: product.imageData || product.images?.[0] || "",
-      isOrganic: !!product.isOrganic,
-      isHalal: !!product.isHalal
-    });
-    setIsModalOpen(true);
   };
 
   const handleImageFile = (file: File) => {
@@ -192,27 +279,11 @@ export default function AdminProductsPage() {
     if (file) handleImageFile(file);
   };
 
-  const filteredProducts = products.filter(p => {
-    const catName = typeof p.category === 'object' ? p.category?.name : p.category;
-    return p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (catName && catName.toLowerCase().includes(searchTerm.toLowerCase()));
-  });
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  // Reset to first page when searching
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
-
   // Range shown in the pagination footer ("Showing 1–10 of 42")
-  const firstShown = filteredProducts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
-  const lastShown = Math.min(currentPage * itemsPerPage, filteredProducts.length);
+  const firstShown = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(currentPage * PAGE_SIZE, total);
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2));
 
   // Keyboard support for the click-to-upload drop zone
   const handleDropZoneKeyDown = (e: React.KeyboardEvent) => {
@@ -244,25 +315,35 @@ export default function AdminProductsPage() {
                 className={cn(INPUT_CLASS, "pl-10")}
               />
             </div>
-            <Button
-              size="sm"
-              onClick={() => { setEditingProduct(null); setIsModalOpen(true); }}
-              className="whitespace-nowrap"
-            >
+            <Button size="sm" onClick={openCreateModal} className="whitespace-nowrap">
               <Plus size={16} aria-hidden="true" /> Add product
             </Button>
         </div>
       </div>
 
-      {isLoading && products.length === 0 ? (
-        <div className="h-[40vh] flex items-center justify-center" role="status">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
-          <span className="sr-only">Loading products…</span>
+      {status === "error" ? (
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-danger-200 bg-danger-50 px-4 py-10 text-center">
+          <p className="text-sm font-medium text-danger-700">Products couldn&apos;t be loaded. Check your connection and try again.</p>
+          <Button size="sm" variant="secondary" onClick={() => { setStatus("loading"); reload(); }}>
+            <RefreshCw size={16} aria-hidden="true" /> Try again
+          </Button>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          {/* Visible loading state: first load and every page change or search */}
+          <div
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "flex items-center gap-2 border-b border-slate-200 bg-brand-50/60 px-4 py-2 text-sm font-medium text-brand-700",
+              !isFetching && "sr-only"
+            )}
+          >
+            {isFetching && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            {isFetching ? (status === "loading" ? "Loading products…" : "Updating products…") : `${total} products loaded`}
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[900px]">
+            <table className="w-full text-left min-w-[900px]" aria-busy={isFetching}>
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th scope="col" className={TH_CLASS}>Product</th>
@@ -273,29 +354,39 @@ export default function AdminProductsPage() {
                   <th scope="col" className={cn(TH_CLASS, "text-right")}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                {paginatedProducts.length === 0 && (
+              <tbody className={cn("divide-y divide-slate-100 text-sm text-slate-700 transition-opacity", isFetching && status === "ready" && "opacity-60")}>
+                {status === "loading" &&
+                  Array.from({ length: 6 }, (_, i) => (
+                    <tr key={`skeleton-${i}`} aria-hidden="true">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-slate-100 animate-pulse" />
+                          <div className="space-y-1.5">
+                            <div className="h-3.5 w-40 rounded bg-slate-100 animate-pulse" />
+                            <div className="h-3 w-16 rounded bg-slate-100 animate-pulse" />
+                          </div>
+                        </div>
+                      </td>
+                      {Array.from({ length: 5 }, (_, j) => (
+                        <td key={j} className="px-3 py-2">
+                          <div className="h-3.5 w-16 rounded bg-slate-100 animate-pulse" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                {status === "ready" && rows.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
-                      {searchTerm ? `No products match "${searchTerm}".` : "No products yet. Add your first product to get started."}
+                      {query ? `No products match "${query}".` : "No products yet. Add your first product to get started."}
                     </td>
                   </tr>
                 )}
-                {paginatedProducts.map((product) => (
+                {status === "ready" && rows.map((product) => (
                   <tr key={product._id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
-                          {product.imageData || product.images?.[0] ? (
-                            <Image
-                              src={product.imageData || product.images[0]}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <ImageIcon className="w-5 h-5 text-slate-400 absolute inset-0 m-auto" aria-hidden="true" />
-                          )}
+                          <Thumbnail product={product} />
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-slate-900 truncate">{product.name}</p>
@@ -305,15 +396,15 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium">
-                        {(typeof product.category === 'object' ? product.category?.name : product.category) || 'Uncategorized'}
+                        {categoryName(product.category) || 'Uncategorized'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-900 tabular-nums">৳{product.price}</span>
                         {/* discountPrice is the sale price, so the saving is price - discountPrice */}
-                        {product.discountPrice > 0 && (
-                          <span className="text-xs font-medium text-accent-700">Save ৳{product.price - product.discountPrice}</span>
+                        {(product.discountPrice ?? 0) > 0 && (
+                          <span className="text-xs font-medium text-accent-700">Save ৳{product.price - (product.discountPrice ?? 0)}</span>
                         )}
                       </div>
                     </td>
@@ -367,38 +458,38 @@ export default function AdminProductsPage() {
             className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3"
           >
             <p className="text-sm text-slate-600">
-              Showing <span className="font-semibold text-slate-900">{firstShown}</span>–<span className="font-semibold text-slate-900">{lastShown}</span> of <span className="font-semibold text-slate-900">{filteredProducts.length}</span> products
+              Showing <span className="font-semibold text-slate-900">{firstShown}</span>–<span className="font-semibold text-slate-900">{lastShown}</span> of <span className="font-semibold text-slate-900">{total}</span> products
             </p>
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isFetching}
                 onClick={() => setCurrentPage(p => Math.max(1, p-1))}
                 aria-label="Previous page"
                 className={cn(PAGE_BUTTON_CLASS, "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed")}
               >
                 <ChevronLeft size={16} aria-hidden="true" />
               </button>
-              {[...Array(totalPages)].map((_, i) => (
+              {pageNumbers.map((n) => (
                 <button
                   type="button"
-                  key={i+1}
-                  onClick={() => setCurrentPage(i+1)}
-                  aria-label={`Page ${i+1}`}
-                  aria-current={currentPage === i+1 ? "page" : undefined}
+                  key={n}
+                  onClick={() => setCurrentPage(n)}
+                  aria-label={`Page ${n}`}
+                  aria-current={currentPage === n ? "page" : undefined}
                   className={cn(
                     PAGE_BUTTON_CLASS,
-                    currentPage === i+1
+                    currentPage === n
                       ? "bg-brand-600 text-white"
                       : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
                   )}
                 >
-                  {i+1}
+                  {n}
                 </button>
-              )).slice(Math.max(0, currentPage-3), Math.min(totalPages, currentPage+2))}
+              ))}
               <button
                 type="button"
-                disabled={currentPage >= totalPages}
+                disabled={currentPage >= totalPages || isFetching}
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
                 aria-label="Next page"
                 className={cn(PAGE_BUTTON_CLASS, "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed")}
@@ -414,7 +505,7 @@ export default function AdminProductsPage() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/50" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeModal} className="absolute inset-0 bg-slate-900/50" />
             <motion.div
               initial={{ opacity: 0, scale: 0.98, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -431,7 +522,7 @@ export default function AdminProductsPage() {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeModal}
                   aria-label="Close"
                   className="flex h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                 >
@@ -439,6 +530,12 @@ export default function AdminProductsPage() {
                 </button>
               </div>
 
+              {isLoadingProduct ? (
+                <div role="status" className="flex flex-col items-center justify-center gap-3 py-16 text-sm text-slate-600">
+                  <Loader2 className="h-7 w-7 animate-spin text-brand-600" aria-hidden="true" />
+                  Loading product…
+                </div>
+              ) : (
               <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
                 {/* Scrollable fields; the action bar below stays visible */}
                 <div className="flex-1 overflow-y-auto p-5">
@@ -450,7 +547,7 @@ export default function AdminProductsPage() {
                     <div>
                       <label htmlFor="product-category" className={LABEL_CLASS}>Category</label>
                       <select id="product-category" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className={cn(INPUT_CLASS, "cursor-pointer")}>
-                        {categories.map((cat: any) => (
+                        {categories.map((cat) => (
                           <option key={cat._id} value={cat.name}>{cat.displayName || cat.name}</option>
                         ))}
                       </select>
@@ -501,7 +598,7 @@ export default function AdminProductsPage() {
                         {formData.imageData ? (
                           <div className="flex items-center gap-3 p-3 pr-14">
                             <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200 bg-white">
-                              <Image src={formData.imageData} alt="Product image preview" fill className="object-cover" />
+                              <Image src={formData.imageData} alt="Product image preview" fill sizes="64px" unoptimized className="object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-slate-800">Image uploaded</p>
@@ -514,7 +611,7 @@ export default function AdminProductsPage() {
                               <Upload size={18} className="text-slate-500" aria-hidden="true" />
                             </div>
                             <p className="text-sm font-medium text-slate-700">Drop an image here or <span className="text-brand-700 underline underline-offset-2">browse</span></p>
-                            <p id="product-image-help" className="text-xs text-slate-500 mt-1">PNG, JPG or WEBP, up to 5 MB</p>
+                            <p id="product-image-help" className="text-xs text-slate-500 mt-1">PNG, JPG or WEBP, up to 2 MB</p>
                           </div>
                         )}
                       </div>
@@ -551,14 +648,20 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-slate-200 bg-white px-5 py-3">
-                  <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" size="sm" loading={isLoading}>
-                    {!isLoading && <SaveIcon size={16} aria-hidden="true" />}
-                    {editingProduct ? "Save changes" : "Create product"}
-                  </Button>
+                <div className="flex flex-col gap-2 border-t border-slate-200 bg-white px-5 py-3">
+                  {saveError && (
+                    <p role="alert" className="text-sm font-medium text-danger-700">{saveError}</p>
+                  )}
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                    <Button variant="secondary" size="sm" onClick={closeModal}>Cancel</Button>
+                    <Button type="submit" size="sm" loading={isSaving}>
+                      {!isSaving && <SaveIcon size={16} aria-hidden="true" />}
+                      {editingProduct ? "Save changes" : "Create product"}
+                    </Button>
+                  </div>
                 </div>
               </form>
+              )}
             </motion.div>
           </div>
         )}

@@ -5,6 +5,7 @@ import { User } from "@/models/User";
 import { isDemoRestricted, requireRole } from "@/lib/authGuard";
 import { maskOrder } from "@/lib/demoMask";
 import { serverError } from "@/lib/http";
+import { withImageUrls } from "@/lib/productImages";
 
 // Paid orders and cash-on-delivery orders that aren't cancelled count as sales;
 // unpaid online checkouts that were abandoned don't.
@@ -40,7 +41,7 @@ export async function GET() {
       Product.countDocuments(),
       User.countDocuments(),
       Order.find().sort({ createdAt: -1 }).limit(5).select("-items.imageData").populate("user", "name email").lean(),
-      Product.find({ stock: { $lt: 10 } }).limit(5).sort({ stock: 1 }).lean(),
+      Product.find({ stock: { $lt: 10 } }).limit(5).sort({ stock: 1 }).select("-imageData").lean<{ _id: unknown; updatedAt?: Date }[]>(),
 
       // Current 7 days sales
       Order.aggregate([
@@ -117,7 +118,7 @@ export async function GET() {
       latestOrders: isDemoRestricted(auth.user)
         ? latestOrders.map((o: Record<string, unknown>) => maskOrder(o))
         : latestOrders,
-      lowStockProducts
+      lowStockProducts: await withImageUrls(lowStockProducts),
     });
   } catch (error) {
     return serverError(error, "Admin stats error");

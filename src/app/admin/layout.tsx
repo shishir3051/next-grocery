@@ -110,9 +110,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (status === "loading" || !isAuthorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50" role="status">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50" role="status">
         <Loader2 className="w-8 h-8 animate-spin text-brand-600" aria-hidden="true" />
-        <span className="sr-only">Loading admin panel…</span>
+        <span className="text-sm font-medium text-slate-600">Loading admin panel…</span>
       </div>
     );
   }
