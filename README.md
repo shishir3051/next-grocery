@@ -31,7 +31,7 @@ Set up your own copy, including the demo accounts and the optional live-demo mod
 - Assigned orders with customer address, phone and map link; mark as delivered (cash orders become paid).
 
 ### Security
-Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers. Details: [docs/SECURITY.md](docs/SECURITY.md).
+Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers. Details: [docs/SECURITY.md](docs/SECURITY.md), including a **route access matrix** (every route and method, who may call it and the check that enforces it) and the **data access rules** per collection. `npm test` fails if any route loses its check.
 
 ## 🛠 Tech Stack
 
@@ -47,7 +47,7 @@ Rate-limited login and sign-up, hashed single-use codes, database-checked roles 
 
 ## 🚀 Getting Started
 
-Requirements: Node.js 22 LTS (pinned in `.nvmrc`; 20.9 or newer runs the app, `npm test` needs 22.18+), a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough, including VPS and Docker, is in [HowToSetup.md](HowToSetup.md).
+Requirements: Node.js 22 LTS, version 22.18 or newer (the same in `.nvmrc`, `package.json` `engines` and the Docker image), and a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough, including VPS and Docker, is in [HowToSetup.md](HowToSetup.md).
 
 ```bash
 npm ci                         # install pinned dependencies
@@ -63,7 +63,7 @@ npm run dev                    # http://localhost:3000
 | `npm run promote-admin -- you@example.com` | Make a registered account an admin |
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` / `npm run lint` / `npm run audit:prod` | Checks |
-| `npm test` | Unit tests: checkout totals, coupons, order status rules and demo privacy (Node 22.18+) |
+| `npm test` | Unit tests: checkout totals, coupon rules, role checks, the route-by-route access matrix, order status rules and demo privacy |
 | `npm run test:demo -- <url>` | API smoke test of the live-demo flow and role checks against a running server |
 
 Every environment variable is explained in [`.env.example`](.env.example). Required: `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL`, `NEXTAUTH_SECRET`, plus `EMAIL_USER` / `EMAIL_PASS` in production. Optional: SSLCommerz, Gemini, Google sign-in, Barikoi, map tiles.
@@ -99,4 +99,4 @@ Safeguards:
 
 ---
 
-*FreshBasket v1.1.0*
+*FreshBasket v1.2.1*

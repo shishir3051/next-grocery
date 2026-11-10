@@ -18,13 +18,115 @@ To report a vulnerability, contact the maintainer privately instead of opening a
 
 ## Authorization
 
-- Every admin and delivery API calls `requireRole()` (`lib/authGuard.ts`), which reads the role
-  **from the database**, not from the token.
+- Every protected API calls one guard from `lib/authGuard.ts`: `requireRole(...)` to read,
+  `requireRoleForWrite(...)` to change data, `requireUser()` for any signed-in account. The guard
+  reads the account and its role **from the database**, not from the token, so a deleted or
+  demoted account loses access at once. The rule itself is `decideAccess()` in `lib/access.ts`:
+  401 without an existing account, 403 for a role outside the list, 403 "read-only demo" for a
+  demo account changing data on a live demo (tested in `tests/access.test.ts`).
 - `src/proxy.ts` redirects non-admins away from `/admin` and non-riders from `/delivery`
   (a convenience; the API checks are the security boundary).
-- Riders can only mark **their own** shipped orders as delivered. Order status changes follow
+- Riders can only see and update orders **assigned to them**. Order status changes follow
   fixed rules (`lib/orderStatus.ts`); cancelling returns stock, coupon use and wallet credit.
 - Password hashes and code hashes are never returned by any API (`PRIVATE_USER_FIELDS`).
+
+### Route access matrix
+
+Every route handler in `src/app` and every method it exports. `tests/route-access.test.ts`
+(part of `npm test`) fails if a route is missing from this table, if a handler lacks the
+check listed for it, if any `/api/admin` method skips the admin role, or if any
+POST/PUT/PATCH/DELETE has no guard, rate limit or payment verification. The table below is
+generated from that test (`UPDATE_DOCS=1 npm test`), so it always matches the code.
+
+<!-- route-access:start -->
+| Route | Method | Who can call it | Enforced in the handler by |
+| --- | --- | --- | --- |
+| `/api/admin/categories` | GET | Admin | `requireRole("admin")` |
+| `/api/admin/categories` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/categories` | PUT | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/categories` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/coupons` | GET | Admin | `requireRole("admin")` |
+| `/api/admin/coupons` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/coupons` | PUT | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/coupons` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/hero` | GET | Admin | `requireRole("admin")` |
+| `/api/admin/hero` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/hero` | PUT | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/hero` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/messages` | GET | Admin (demo admin sees customer data masked) | `requireRole("admin")`, `isDemoRestricted(` |
+| `/api/admin/messages/[id]` | PATCH | Admin (demo admin can't send replies) | `requireRole("admin")`, `isDemoRestricted(`, `demoReadOnly(` |
+| `/api/admin/messages/[id]` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/orders` | GET | Admin (demo admin sees customer data masked) | `requireRole("admin")`, `isDemoRestricted(` |
+| `/api/admin/orders` | PATCH | Admin (demo admin: demo orders only) | `requireRole("admin")`, `isDemoRestricted(`, `demoReadOnly(` |
+| `/api/admin/products` | GET | Admin | `requireRole("admin")` |
+| `/api/admin/products` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/products` | PUT | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/products` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/settings` | GET | Admin | `requireRole("admin")` |
+| `/api/admin/settings` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/stats` | GET | Admin (demo admin sees customer data masked) | `requireRole("admin")`, `isDemoRestricted(` |
+| `/api/admin/users` | GET | Admin (demo admin sees customer data masked) | `requireRole("admin")`, `isDemoRestricted(` |
+| `/api/admin/users` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/users` | PUT | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/admin/users` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/ai/recipes` | POST | Public, rate-limited | `checkRateLimit(` |
+| `/api/ai/smart-search` | POST | Public, rate-limited | `checkRateLimit(` |
+| `/api/auth/[...nextauth]` | GET | Public (NextAuth sign-in, session and CSRF endpoints) | nothing: public by design |
+| `/api/auth/[...nextauth]` | POST | Public (NextAuth sign-in, session and CSRF endpoints) | nothing: public by design |
+| `/api/auth/forgot-password` | POST | Public, rate-limited | `checkRateLimit(` |
+| `/api/auth/register` | POST | Public, rate-limited | `checkRateLimit(` |
+| `/api/auth/reset-password` | POST | Public, rate-limited | `checkRateLimit(` |
+| `/api/auth/verify-otp` | POST | Public, rate-limited | `checkRateLimit(` |
+| `/api/categories` | GET | Public (read-only store content) | nothing: public by design |
+| `/api/contact` | POST | Public contact form, rate-limited (demo accounts: read-only) | `checkRateLimit(`, `demoReadOnly(` |
+| `/api/coupons/validate` | POST | Signed-in account, rate-limited | `requireUser()`, `checkRateLimit(` |
+| `/api/delivery/orders` | GET | Rider or admin: only orders assigned to them | `requireRole("delivery", "admin")`, `assignedTo: auth.user.id` |
+| `/api/delivery/orders` | PATCH | Rider or admin: only orders assigned to them (demo rider: demo orders only) | `requireRole("delivery", "admin")`, `assignedTo: auth.user.id`, `isDemoRestricted(` |
+| `/api/geocode` | GET | Public, rate-limited | `checkRateLimit(` |
+| `/api/news` | GET | Public (published articles) | nothing: public by design |
+| `/api/news/[id]` | GET | Public (published articles; drafts only for admins) | `requireAdmin()` |
+| `/api/news/admin` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/news/admin/[id]` | PATCH | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/news/admin/[id]` | DELETE | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/orders` | GET | Signed-in account: only their own orders | `requireUser()`, `user: auth.user.id` |
+| `/api/orders` | POST | Signed-in account, rate-limited (order is saved for that account) | `requireUser()`, `checkRateLimit(`, `user: userId` |
+| `/api/payments/ssl-init` | POST | Signed-in account, rate-limited (order is saved for that account) | `requireUser()`, `checkRateLimit(`, `user: user.id` |
+| `/api/payments/ssl-status` | POST | SSLCommerz callback: paid only after SSLCommerz confirms; cancel needs the signed link | `validateSslPayment(`, `timingSafeEqual(` |
+| `/api/products` | GET | Public (read-only store content) | nothing: public by design |
+| `/api/public/coupons` | GET | Public (active coupons shown in the cart) | nothing: public by design |
+| `/api/public/hero` | GET | Public (read-only store content) | nothing: public by design |
+| `/api/seed` | POST | Admin (demo admin: read-only) | `requireRoleForWrite("admin")` |
+| `/api/settings` | GET | Public (store name, delivery fees, maintenance flag) | nothing: public by design |
+| `/api/stats/public` | GET | Public (read-only store content) | nothing: public by design |
+| `/api/user/profile` | GET | Signed-in account: only their own profile | `requireUser()`, `auth.user.id` |
+| `/api/user/profile` | PUT | Signed-in account: only their own profile (demo accounts: read-only) | `requireRoleForWrite()`, `auth.user.id` |
+| `/media/products/[id]/[version]` | GET | Public (product photos) | nothing: public by design |
+<!-- route-access:end -->
+
+## Data access rules
+
+MongoDB through Mongoose only: no SQL, no `$where`, no server-side JavaScript. Who can read
+and change each collection, and how each query is scoped:
+
+| Collection | Read | Change | Scoping in the query |
+|---|---|---|---|
+| `orders` | The customer (own), the assigned rider, admins | Customer creates; admin changes status and rider; rider marks delivered; SSLCommerz callback marks paid | Customer: `{ user: auth.user.id }`. Rider: `{ assignedTo: auth.user.id }` (demo rider also `isDemo: true`). Payment callback: by `tran_id` only after SSLCommerz validates it. Demo admin changes demo orders only |
+| `users` | The account itself (`/api/user/profile`), admins | The account itself (name, phone, address), admins (role) | Profile: `findById(auth.user.id)` with `PRIVATE_USER_FIELDS` removed. Admin list is masked for the demo admin |
+| `products`, `categories` | Everyone | Admins | Public lists select only display fields and never send photo data (`/media/products/...` serves photos) |
+| `coupons` | Everyone (active ones), admins (all) | Admins; usage counted atomically at checkout | Checkout and the cart check use one rule, `couponProblem()` in `lib/orders.ts` (tested in `tests/coupons.test.ts`) |
+| `news`, `heroslides`, `settings` | Everyone (published only) | Admins | Drafts only for admins (`/api/news/[id]`) |
+| `contactmessages` | Admins (masked for the demo admin) | Anyone sends (rate-limited); admins reply | Demo accounts can't send or reply |
+| `ratelimits` | Server only | Server only | Keyed by IP or account id, expire automatically (TTL index) |
+
+How queries stay safe:
+
+- Ids are checked with `isObjectId()` before any `findById`; text fields pass `requiredString()` /
+  `optionalString()` (type and length) and numbers `toNumber()` (range), so a request can never
+  put an operator object such as `{"$ne": null}` into a filter.
+- Search text is escaped with `escapeRegex()` and capped at 64 characters.
+- Writes copy named fields only (`$set` with an allow-list); request bodies are never spread into
+  a document. Stock, coupon use and wallet credit change through atomic conditional updates.
+- Indexes for every lookup above are created by `npm run db:indexes` (`database/indexes.js`).
 
 ## Input handling
 
@@ -119,10 +221,28 @@ through: otherwise a made-up header gets a fresh per-IP limit on every request (
 `npm run audit:prod` must report 0 vulnerabilities for production dependencies before a
 release. Remaining advisories are in development-only lint tooling.
 
-- Last run for 1.1.0 (2026-11-08): `npm audit --omit=dev` → **found 0 vulnerabilities**.
-- `next-auth` stays on 4.x on purpose: 4.24.15 is the current stable release on npm (`latest`),
-  while Auth.js v5 is still a beta (`5.0.0-beta.32`). Update within 4.x for security fixes.
-- Every dependency is pinned by `package-lock.json`; install with `npm ci`.
+Last run for 1.2.1 (2026-11-10, npm 11, Node 24):
+
+```text
+$ npm audit --omit=dev        # production dependencies
+found 0 vulnerabilities
+
+$ npm audit                   # everything, including development tools
+found 0 vulnerabilities
+```
+
+| Package | Version | Status |
+|---|---|---|
+| `next` | 16.4.5 | No known advisories |
+| `next-auth` | 4.24.15 | No known advisories. Stays on 4.x on purpose: 4.24.15 is the current stable release on npm (`latest`), while Auth.js v5 is still a beta (`5.0.0-beta.32`). Update within 4.x for security fixes |
+| `mongoose` | 9.11.4 | No known advisories |
+| `nodemailer` | 10.3.1 | No known advisories. `overrides` makes `next-auth` use this same version instead of the older one it asks for |
+| `minimatch` (inside `@typescript-eslint/typescript-estree`, lint only) | 11.0.5 | Forced by `overrides`: the 10.x copy that `typescript-eslint` 8.72.2 brings has a moderate advisory (GHSA-g3hv-75wg-m249) |
+
+- Every dependency in `package.json` is an exact version (no `^` ranges), and
+  `package-lock.json` pins the whole tree: install with `npm ci`.
+- The two `overrides` above are the only ones. Remove the `minimatch` one once
+  `typescript-eslint` ships a fixed version.
 
 ## Known limitations
 

@@ -1,0 +1,49 @@
+# FreshBasket with Docker. See HowToSetup.md (section "6B. Production on a VPS with Docker").
+#
+# 1. Make the env file from the template, then replace every placeholder in it:
+#      cp .env.example .env.production
+#    Required: MONGODB_URI, NEXTAUTH_URL, NEXT_PUBLIC_BASE_URL, NEXTAUTH_SECRET.
+#    (.env.production holds real secrets: keep it private, chmod 600, never commit it.)
+#
+# 2. With your own MongoDB (e.g. Atlas): set MONGODB_URI in .env.production, then
+#   docker compose up -d --build
+#
+#    Or, with the bundled local MongoDB: set MONGODB_URI=mongodb://mongo:27017/freshbasket
+#    in .env.production, then
+#   docker compose --profile local-db up -d --build
+#
+# 3. Create indexes and demo data once (either case):
+#   docker compose run --rm app node database/indexes.js
+#   docker compose run --rm app node database/seed.js --demo-users
+#
+# The app listens on 127.0.0.1:3000 only; put a TLS reverse proxy (Caddy or nginx) in
+# front of it (docs/DEPLOYMENT.md).
+services:
+  app:
+    build:
+      context: .
+      args:
+        # Placeholder default: set NEXT_PUBLIC_BASE_URL to your public https:// address.
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+    env_file: .env.production
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  mongo:
+    image: mongo:7
+    profiles: ["local-db"]
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    # Not published to the host: only the app container can reach it (mongodb://mongo:27017).
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, randomUUID } from "crypto";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/authGuard";
 import dbConnect from "@/lib/mongodb";
 import { Order } from "@/models/Order";
 import { Settings } from "@/models/Settings";
-import { User } from "@/models/User";
 import { parseOrderRequest, buildOrderQuote, consumeCoupon, releaseCoupon } from "@/lib/orders";
 import { SSLCOMMERZ_INIT_URL } from "@/lib/sslcommerz";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
@@ -15,13 +13,13 @@ import { demoShippingAddress } from "@/lib/demoOrder";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Any signed-in account that still exists; the role is read from the database.
+    const auth = await requireUser();
+    if ("response" in auth) return auth.response;
+    const user = auth.user;
 
     // Live demo: the shared demo customer's orders never reserve coupon uses or stock.
-    const isDemoOrder = Boolean(session.user.isDemo) && isDemoModeEnabled();
+    const isDemoOrder = user.isDemo && isDemoModeEnabled();
 
     // Demo orders are deleted after 3 days with no refund trail, so the live demo may only
     // pay through the SSLCommerz sandbox, never with real money.
@@ -30,14 +28,14 @@ export async function POST(request: NextRequest) {
     }
 
     // The shared demo customer is limited per visitor, so one visitor can't block the rest.
-    const limitKey = isDemoOrder ? `ssl-init-demo:${clientIp(request.headers)}` : `ssl-init:${session.user.id}`;
+    const limitKey = isDemoOrder ? `ssl-init-demo:${clientIp(request.headers)}` : `ssl-init:${user.id}`;
     const limit = await checkRateLimit(limitKey, 10, 10 * 60 * 1000);
     if (!limit.ok) return tooManyRequests(limit.retryAfterSeconds, "Too many payment attempts. Please wait a few minutes.");
 
     // A new IP must not mean unlimited demo orders, so all demo visitors together also share
     // one ceiling (six visitors' worth). Checked second, so requests refused above don't count.
     if (isDemoOrder) {
-      const overall = await checkRateLimit(`ssl-init-demo-all:${session.user.id}`, 60, 10 * 60 * 1000);
+      const overall = await checkRateLimit(`ssl-init-demo-all:${user.id}`, 60, 10 * 60 * 1000);
       if (!overall.ok) return tooManyRequests(overall.retryAfterSeconds, "The live demo is busy right now. Please try again in a few minutes.");
     }
 
@@ -46,8 +44,7 @@ export async function POST(request: NextRequest) {
     // 0. Check Maintenance Mode
     const settings = await Settings.findOne();
     if (settings?.maintenanceMode) {
-      const dbUser = await User.findOne({ email: session.user.email });
-      if (dbUser?.role !== 'admin') {
+      if (user.role !== 'admin') {
         return NextResponse.json({
           error: "Store is currently under maintenance. Please try again later."
         }, { status: 503 });
@@ -84,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Create provisional order
     const order = await Order.create({
-      user: session.user.id,
+      user: user.id,
       items: quote.items,
       totalAmount: quote.total,
       shippingAddress,
@@ -111,8 +108,8 @@ export async function POST(request: NextRequest) {
     formData.append('ipn_url', `${baseUrl}/api/payments/ssl-status?status=ipn`);
 
     // Customer Info
-    formData.append('cus_name', session.user.name || 'Customer');
-    formData.append('cus_email', session.user.email || 'customer@example.com');
+    formData.append('cus_name', user.name || 'Customer');
+    formData.append('cus_email', user.email || 'customer@example.com');
     formData.append('cus_add1', shippingAddress.street);
     formData.append('cus_city', shippingAddress.city);
     formData.append('cus_postcode', shippingAddress.zipCode || '0000');
@@ -125,7 +122,7 @@ export async function POST(request: NextRequest) {
     formData.append('product_name', 'Grocery Items');
     formData.append('product_category', 'Grocery');
     formData.append('product_profile', 'general');
-    formData.append('ship_name', session.user.name || 'Customer');
+    formData.append('ship_name', user.name || 'Customer');
     formData.append('ship_add1', shippingAddress.street);
     formData.append('ship_city', shippingAddress.city);
     formData.append('ship_state', shippingAddress.city);

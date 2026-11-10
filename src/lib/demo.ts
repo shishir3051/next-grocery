@@ -66,7 +66,7 @@ export function maskPhone(phone: unknown): string {
   return digits.length >= 2 ? `${DOT}${DOT}${digits.slice(-2)}` : DOT;
 }
 
-/** "Gaziur Rahman" → "G••• R.", "rahimuddin" → "r•••", "gaziur.rahman" → "g•••" */
+/** "Golam Rahman" → "G••• R.", "rahimuddin" → "r•••", "golam.rahman" → "g•••" */
 export function maskName(name: unknown): string {
   if (typeof name !== "string" || !name.trim()) return "Customer";
   const parts = name.trim().split(/\s+/);

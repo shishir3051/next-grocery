@@ -5,8 +5,9 @@ import dbConnect from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { isObjectId } from "@/lib/validation";
 import { DEMO_READ_ONLY_HEADER, DEMO_READ_ONLY_MESSAGE, isDemoEmail, isDemoModeEnabled } from "@/lib/demo";
+import { decideAccess, type Role } from "@/lib/access";
 
-export type Role = "user" | "admin" | "delivery";
+export type { Role };
 
 export interface AuthorizedUser {
   id: string;
@@ -16,6 +17,8 @@ export interface AuthorizedUser {
   /** A live-demo account (see lib/demo.ts). */
   isDemo: boolean;
 }
+
+type Guarded = Promise<{ user: AuthorizedUser } | { response: NextResponse }>;
 
 /**
  * Fields that must never leave the server, even to admins: password hash, one-time-code
@@ -36,20 +39,30 @@ export const PRIVATE_USER_FIELDS =
  *   if ("response" in auth) return auth.response;
  *   auth.user.id ...
  *
- * Handlers that change data use requireRoleForWrite instead.
+ * Handlers that change data use requireRoleForWrite instead. The rule itself is
+ * decideAccess in lib/access.ts (unit-tested in tests/access.test.ts); which guard each
+ * route uses is checked by tests/route-access.test.ts and listed in docs/SECURITY.md.
  */
-export async function requireRole(...roles: Role[]): Promise<{ user: AuthorizedUser } | { response: NextResponse }> {
-  const session = await getServerSession(authOptions);
-  const id = session?.user?.id;
-  if (!isObjectId(id)) return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+export function requireRole(...roles: Role[]): Guarded {
+  return authorize(roles, false);
+}
 
-  await dbConnect();
-  const user = await User.findById(id).select("email name role").lean<{ _id: unknown; email: string; name: string; role: Role }>();
-  if (!user) return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (roles.length > 0 && !roles.includes(user.role)) {
-    return { response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { user: { id: String(user._id), email: user.email, name: user.name, role: user.role, isDemo: isDemoEmail(user.email) } };
+/**
+ * requireRole for handlers that change data: on a live-demo deployment the demo accounts
+ * get a 403 "read-only demo" answer instead. Use it for every POST/PUT/PATCH/DELETE that
+ * a demo account must not perform.
+ */
+export function requireRoleForWrite(...roles: Role[]): Guarded {
+  return authorize(roles, true);
+}
+
+/** Any signed-in user whose account still exists. */
+export const requireUser = () => requireRole();
+
+/** Returns the signed-in admin's id, or null. Kept for routes that only need a yes/no. */
+export async function requireAdmin(): Promise<string | null> {
+  const auth = await requireRole("admin");
+  return "user" in auth ? auth.user.id : null;
 }
 
 /** True when this user is a demo account on a live-demo deployment (DEMO_MODE=true). */
@@ -62,22 +75,22 @@ export const demoReadOnly = () =>
     { status: 403, headers: { [DEMO_READ_ONLY_HEADER]: "1" } }
   );
 
-/**
- * requireRole for handlers that change data: on a live-demo deployment the demo accounts
- * get a 403 "read-only demo" answer instead. Use it for every POST/PUT/PATCH/DELETE that
- * a demo account must not perform.
- */
-export async function requireRoleForWrite(...roles: Role[]): Promise<{ user: AuthorizedUser } | { response: NextResponse }> {
-  const auth = await requireRole(...roles);
-  if ("user" in auth && isDemoRestricted(auth.user)) return { response: demoReadOnly() };
-  return auth;
-}
+/** Loads the signed-in account from the database, then applies decideAccess. */
+async function authorize(roles: Role[], write: boolean): Guarded {
+  const session = await getServerSession(authOptions);
+  const id = session?.user?.id;
+  let account: { _id: unknown; email: string; name: string; role: Role } | null = null;
+  if (isObjectId(id)) {
+    await dbConnect();
+    account = await User.findById(id).select("email name role").lean<{ _id: unknown; email: string; name: string; role: Role }>();
+  }
 
-/** Any signed-in user whose account still exists. */
-export const requireUser = () => requireRole();
-
-/** Returns the signed-in admin's id, or null. Kept for routes that only need a yes/no. */
-export async function requireAdmin(): Promise<string | null> {
-  const auth = await requireRole("admin");
-  return "user" in auth ? auth.user.id : null;
+  const decision = decideAccess(account, roles, { write, demoMode: isDemoModeEnabled() });
+  if (!decision.ok) {
+    if (decision.reason === "demo-read-only") return { response: demoReadOnly() };
+    return { response: NextResponse.json({ error: decision.status === 401 ? "Unauthorized" : "Forbidden" }, { status: decision.status }) };
+  }
+  // decideAccess only allows an existing account.
+  const user = account!;
+  return { user: { id: String(user._id), email: user.email, name: user.name, role: user.role, isDemo: isDemoEmail(user.email) } };
 }

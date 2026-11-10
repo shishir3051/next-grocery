@@ -50,6 +50,7 @@ src/
     googleAccount.ts      Google sign-in: find/link/create the account safely
     email.ts              Nodemailer: codes, plain emails (escapes customer text)
     authGuard.ts          requireRole() for reads, requireRoleForWrite() for changes (blocks demo accounts)
+    access.ts             decideAccess(): the pure role rule behind authGuard (tests/access.test.ts)
     demo.ts, demoMask.ts  live-demo mode (DEMO_MODE): demo accounts, masking of personal data
     validation.ts         input validators (strings, numbers, ObjectIds, images, slugs, email)
     http.ts               JSON body reader and error responses (never leak internals)
@@ -74,6 +75,9 @@ scripts/                  one-off admin scripts (run with node, read .env.local)
   or `requireUser()`), then `if ("response" in auth) return auth.response;`. Handlers that
   change data use `requireRoleForWrite(...)` instead, so live-demo accounts stay read-only;
   GET handlers returning customers' personal data mask it when `isDemoRestricted(auth.user)`.
+- Every route handler and method is listed in `tests/route-access.test.ts` with who may call
+  it and the check that enforces it. Add new routes there, then run `UPDATE_DOCS=1 npm test`
+  to refresh the route access matrix in docs/SECURITY.md; `npm test` fails until both match.
 - Read bodies with `readJsonObject()`. Copy only expected fields, each validated with
   `lib/validation.ts`. Never spread a request body into `create`/`update`.
 - Never put a value from the request into a Mongo filter unless it is a validated string or

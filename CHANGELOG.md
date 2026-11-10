@@ -1,8 +1,37 @@
 # Changelog
 
-All notable changes to FreshBasket. Versions follow [Semantic Versioning](https://semver.org).
+All notable changes to FreshBasket. Versions follow [Semantic Versioning](https://semver.org). Each release lists what was added,
+changed and fixed since the one below it, back to the first release, 1.0.0.
 
-## [Unreleased]
+## [1.2.1] — 2026-11-10
+
+### Added
+- Route access matrix in `docs/SECURITY.md`: every route handler and method, who may call it
+  and the check that enforces it. `tests/route-access.test.ts` keeps it true: it fails when a
+  route is unlisted, a handler lacks its check, an `/api/admin` method skips the admin role, or
+  a data-changing method has no guard.
+- Data access rules per collection in `docs/SECURITY.md` (who reads, who changes, how each
+  query is scoped).
+- Tests for role checks (`tests/access.test.ts`) and coupon rules (`tests/coupons.test.ts`).
+  `npm test` now runs 36 tests.
+- Dockerfile, `docker-compose.yml` and `.dockerignore` are now in the repository.
+
+### Changed
+- The role rule behind `requireRole` / `requireRoleForWrite` / `requireUser` is a pure
+  function, `decideAccess()` in `lib/access.ts`; behaviour is unchanged.
+- Placing an order, viewing order history, starting an online payment and checking a coupon
+  use the central `requireUser()` guard, so the account and its role are read from the
+  database on every request, as on every other protected route.
+- One coupon rule, `couponProblem()`, for the cart check and for checkout.
+- Node.js 22.18 or newer everywhere (`engines`, `.nvmrc`, Docker image, docs).
+- Every dependency is pinned to an exact version; `@types/node` matches Node 22. `npm audit`
+  reports 0 vulnerabilities, including development tools.
+
+### Fixed
+- A coupon whose usage limit was stored as 0 ("no limit" in the admin panel) passed the cart
+  check but was refused at checkout. Both now treat 0 or empty as unlimited.
+
+## [1.2.0] — 2026-11-10
 
 ### Changed
 - Admin > Products loads 10 products per page, with paging and search done on the server, and

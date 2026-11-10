@@ -1,0 +1,16 @@
+# Keep secrets, local state and build output out of the Docker build context.
+.env*
+!.env.example
+.git
+.github
+.claude
+.vercel
+.next
+node_modules
+npm-debug.log*
+coverage
+docs/design
+gsap-skills
+*.tsbuildinfo
+Dockerfile
+docker-compose.yml

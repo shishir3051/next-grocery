@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/authGuard";
 import dbConnect from "@/lib/mongodb";
 import { Order } from "@/models/Order";
 import { Settings } from "@/models/Settings";
-import { User } from "@/models/User";
 import {
   parseOrderRequest,
   buildOrderQuote,
@@ -27,15 +25,14 @@ const MAX_OPEN_COD_ORDERS = 5;
 /** Places a Cash-on-Delivery order (optionally part- or fully-paid from the wallet). */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = session.user.id;
+    // Any signed-in account that still exists; the role is read from the database.
+    const auth = await requireUser();
+    if ("response" in auth) return auth.response;
+    const userId = auth.user.id;
 
     // Live demo: the demo customer is shared by every visitor. Its orders never reserve
     // real stock, coupon uses or wallet credit, and old ones are tidied away first.
-    const isDemoOrder = Boolean(session.user.isDemo) && isDemoModeEnabled();
+    const isDemoOrder = auth.user.isDemo && isDemoModeEnabled();
 
     // Abuse limits: COD orders reserve stock immediately, so one account must not be
     // able to tie up the inventory with a flood of orders it never intends to receive.
@@ -67,8 +64,7 @@ export async function POST(request: NextRequest) {
     // 0. Check Maintenance Mode
     const settings = await Settings.findOne();
     if (settings?.maintenanceMode) {
-      const dbUser = await User.findOne({ email: session.user.email });
-      if (dbUser?.role !== 'admin') {
+      if (auth.user.role !== 'admin') {
         return NextResponse.json({ 
           error: "Store is currently under maintenance. Please try again later." 
         }, { status: 503 });
@@ -144,15 +140,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireUser();
+    if ("response" in auth) return auth.response;
 
     await dbConnect();
 
-    // Only the fields the order history needs; never the product's full document.
-    const orders = await Order.find({ user: session.user.id })
+    // Only the signed-in user's own orders, and only the fields the order history needs.
+    const orders = await Order.find({ user: auth.user.id })
       .sort({ createdAt: -1 })
       .limit(100)
       .populate('items.productId', 'name slug images unit')

@@ -105,6 +105,32 @@ export function computeCouponDiscount(
   return roundMoney(Math.min(Math.max(discount, 0), subtotal));
 }
 
+/** The coupon fields the validity rules look at. */
+export interface CouponRules {
+  isActive?: boolean | null;
+  startDate?: Date | string | null;
+  expiryDate?: Date | string | null;
+  minOrderAmount?: number | null;
+  usageLimit?: number | null;
+  usedCount?: number | null;
+}
+
+/**
+ * Why a coupon can't be used on this goods subtotal right now, or null when it can.
+ * The single rule behind the cart preview (/api/coupons/validate) and order creation, so
+ * the two never disagree. A usage limit counts only when it is 1 or more: the admin panel
+ * saves "no limit" as null, and older data may hold 0 for the same meaning.
+ */
+export function couponProblem(coupon: CouponRules | null | undefined, subtotal: number, now: Date = new Date()): string | null {
+  if (!coupon || coupon.isActive === false) return "Invalid or expired coupon code";
+  if (coupon.startDate && new Date(coupon.startDate) > now) return "Invalid or expired coupon code";
+  if (!coupon.expiryDate || new Date(coupon.expiryDate) < now) return "Invalid or expired coupon code";
+  if ((coupon.usageLimit ?? 0) > 0 && (coupon.usedCount ?? 0) >= (coupon.usageLimit ?? 0)) return "Coupon usage limit reached";
+  const minimum = coupon.minOrderAmount ?? 0;
+  if (subtotal < minimum) return `Min order for this coupon is ৳${minimum}`;
+  return null;
+}
+
 /**
  * Prices the order from database values: product prices, delivery settings and coupon.
  * Stock is pre-checked here for a friendly error; the real guarantee is the
@@ -136,16 +162,10 @@ export async function buildOrderQuote(
   let discount = 0;
   let couponId: string | null = null;
   if (request.couponCode) {
-    const now = new Date();
-    const coupon = await Coupon.findOne({
-      code: request.couponCode,
-      isActive: true,
-      startDate: { $lte: now },
-      expiryDate: { $gte: now },
-    }).lean<{ _id: unknown; discountType: string; discountValue: number; minOrderAmount?: number; maxDiscount?: number | null; usageLimit?: number | null; usedCount?: number }>();
+    const coupon = await Coupon.findOne({ code: request.couponCode })
+      .lean<CouponRules & { _id: unknown; discountType: string; discountValue: number; maxDiscount?: number | null }>();
 
-    const limitReached = coupon?.usageLimit != null && (coupon.usedCount || 0) >= coupon.usageLimit;
-    if (!coupon || limitReached || subtotal < (coupon.minOrderAmount || 0)) {
+    if (!coupon || couponProblem(coupon, subtotal)) {
       return fail("This coupon is no longer valid for your order. Please remove it and try again.");
     }
 
@@ -194,10 +214,10 @@ export async function releaseStock(items: { productId: string; quantity: number 
   await Promise.all(items.map(i => Product.updateOne({ _id: i.productId }, { $inc: { stock: i.quantity } })));
 }
 
-/** Atomically counts one use of a coupon, respecting its usage limit. */
+/** Atomically counts one use of a coupon, respecting its usage limit (null or 0 = no limit, as in couponProblem). */
 export async function consumeCoupon(couponId: string): Promise<boolean> {
   const updated = await Coupon.findOneAndUpdate(
-    { _id: couponId, $or: [{ usageLimit: null }, { $expr: { $lt: ["$usedCount", "$usageLimit"] } }] },
+    { _id: couponId, $or: [{ usageLimit: null }, { usageLimit: { $lte: 0 } }, { $expr: { $lt: ["$usedCount", "$usageLimit"] } }] },
     { $inc: { usedCount: 1 } }
   );
   return Boolean(updated);

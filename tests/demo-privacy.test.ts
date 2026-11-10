@@ -6,13 +6,13 @@ import { maskMessage, maskOrder, maskUser } from "@/lib/demoMask";
 
 test("names are reduced to initials", () => {
   assert.equal(maskName("Sudipta Akter"), "S••• A.");
-  assert.equal(maskName("Shishir"), "S•••");
+  assert.equal(maskName("Sabbir"), "S•••");
   assert.equal(maskName("rahim@gmail.com"), "r•••");
   assert.equal(maskName(""), "Customer");
 });
 
 test("emails and phone numbers are masked", () => {
-  assert.equal(maskEmail("shishir@gmail.com"), "s•••@g•••.com");
+  assert.equal(maskEmail("salma@gmail.com"), "s•••@g•••.com");
   assert.equal(maskPhone("01711223344"), "••••••44");
 });
 
@@ -62,7 +62,7 @@ test("real orders are masked and never carry the payment transaction id", () => 
 
 test("demo accounts are shown as they are; real users are masked", () => {
   assert.equal(maskUser({ name: "Demo Admin", email: DEMO_ACCOUNTS.admin.email })?.name, "Demo Admin");
-  const real = maskUser({ name: "Gaziur Rahman", email: "gaziur@gmail.com", image: "data:image/png;base64,AAAA" });
+  const real = maskUser({ name: "Golam Rahman", email: "golam@gmail.com", image: "data:image/png;base64,AAAA" });
   assert.equal(real?.name, "G••• R.");
   assert.equal(real?.image, "");
 });
@@ -72,7 +72,7 @@ test("real contact messages hide their text; staff names are always hidden", () 
     name: "Rahim Uddin",
     email: "rahim@gmail.com",
     message: "My order is late",
-    replies: [{ body: "Sorry!", sentByName: "Gaziur Rahman" }],
+    replies: [{ body: "Sorry!", sentByName: "Golam Rahman" }],
   });
   assert.notEqual(real.message, "My order is late");
   assert.equal(real.replies?.[0].sentByName, "Store team");
@@ -81,7 +81,7 @@ test("real contact messages hide their text; staff names are always hidden", () 
   const sample = maskMessage({
     email: DEMO_ACCOUNTS.customer.email,
     message: "Sample text",
-    replies: [{ body: "Reply", sentByName: "Gaziur Rahman" }],
+    replies: [{ body: "Reply", sentByName: "Golam Rahman" }],
   });
   assert.equal(sample.message, "Sample text");
   assert.equal(sample.replies?.[0].sentByName, "Store team");
