@@ -181,7 +181,8 @@ test("every data-changing method is guarded, rate-limited or verified", () => {
 });
 
 test("docs/SECURITY.md shows the current route access matrix", () => {
-  const doc = readFileSync(DOC, "utf8");
+  // Line endings don't matter: a Windows checkout may turn LF into CRLF.
+  const doc = readFileSync(DOC, "utf8").replace(/\r\n/g, "\n");
   const start = doc.indexOf(START);
   const end = doc.indexOf(END);
   assert.ok(start !== -1 && end > start, `docs/SECURITY.md needs the ${START} / ${END} markers`);
