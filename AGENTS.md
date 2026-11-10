@@ -21,7 +21,7 @@ npm run build        # production build
 npm run typecheck    # tsc --noEmit
 npm run lint         # eslint
 npm run audit:prod   # must report 0 vulnerabilities
-npm test             # unit tests in tests/ (Node 22.18+, built-in TypeScript support)
+npm test             # 36 unit tests in tests/ (Node 22, 22.18 or later: built-in TypeScript support)
 npm run test:demo -- http://localhost:3000   # API smoke test of the demo flow (DEMO_MODE=true)
 npm run promote-admin -- user@example.com   # make a verified user an admin
 npm run normalize-emails [-- --apply]       # one-time lower-case email migration
@@ -98,6 +98,62 @@ scripts/                  one-off admin scripts (run with node, read .env.local)
 - `discountPrice` is the **sale price**, not an amount off. Use `getEffectivePrice()`.
 - Use `slugify()` for slugs (handles Bangla names).
 - Before finishing: `npm run typecheck`, `npm run lint` on changed files, `npm test`, `npm run build`.
+
+## Access control by route
+
+Every route handler, grouped by who may call it. `tests/route-access.test.ts` checks each
+handler for the guard named here (and fails on any unlisted route); the per-method table is
+in docs/SECURITY.md ("Route access matrix").
+
+| Who | Guard in the handler | Routes |
+|---|---|---|
+| Admin | reads `requireRole("admin")`, writes `requireRoleForWrite("admin")` | `/api/admin/categories`, `coupons`, `hero`, `messages`, `messages/[id]`, `orders`, `products`, `settings`, `stats`, `users`; `/api/news/admin`, `/api/news/admin/[id]`; `/api/seed` |
+| Rider (or admin) | `requireRole("delivery", "admin")`, query `{ assignedTo: auth.user.id }` | `/api/delivery/orders` (GET, PATCH) |
+| Any signed-in account, own data only | `requireUser()` (profile PUT: `requireRoleForWrite()`) | `/api/orders` (GET filters `{ user: auth.user.id }`; POST saves `user: auth.user.id`), `/api/payments/ssl-init`, `/api/coupons/validate`, `/api/user/profile` |
+| Public, rate-limited | `checkRateLimit()` | `/api/auth/register`, `verify-otp`, `forgot-password`, `reset-password`; `/api/ai/smart-search`, `/api/ai/recipes`; `/api/geocode`; `/api/contact` |
+| Public, read-only | none (published or active data only) | `/api/products`, `/api/categories`, `/api/news`, `/api/news/[id]` (drafts: `requireAdmin()`), `/api/public/coupons`, `/api/public/hero`, `/api/settings`, `/api/stats/public`, `/media/products/[id]/[version]` |
+| SSLCommerz | signature and validation API (below) | `/api/payments/ssl-status` |
+| NextAuth | NextAuth's own CSRF and session checks | `/api/auth/[...nextauth]` |
+
+The guard reads the account and role from the database on every call (`lib/authGuard.ts`);
+the rule itself is `decideAccess()` in `lib/access.ts` (401 signed out or deleted, 403 wrong
+role, 403 read-only for demo accounts changing data), tested in `tests/access.test.ts`.
+
+## Payments: SSLCommerz callback and IPN
+
+- `POST /api/payments/ssl-init` (`requireUser()`, rate-limited) prices the order from the
+  database, saves it as unpaid with a random `tran_id`, and registers all four gateway URLs on
+  one route (`src/app/api/payments/ssl-init/route.ts`, lines 105–108):
+  `success_url`, `fail_url`, `cancel_url` and `ipn_url` →
+  `/api/payments/ssl-status?status=success|fail|cancel|ipn`.
+- `POST /api/payments/ssl-status` (`src/app/api/payments/ssl-status/route.ts`) is the
+  callback **and** the IPN listener:
+  - success / IPN: reads `val_id` (line 44), confirms it with the SSLCommerz validation API
+    (`validateSslPayment()` in `lib/sslcommerz.ts`: status must be `VALID` or `VALIDATED`),
+    loads the stored order by the validated `tran_id` (line 50), and requires the paid amount
+    to equal `order.totalAmount` within 0.01 and the currency to be BDT (line 54). Only then
+    does an atomic `findOneAndUpdate` move it from unpaid/pending to paid/processing (line 61),
+    so the redirect and the IPN can't both apply it. A mismatch is logged and nothing changes.
+  - fail / cancel: cancels the unpaid order only when the request carries the HMAC signature
+    that ssl-init put in those URLs, compared with `timingSafeEqual`; without it nothing
+    changes (`npm run test:demo` checks this).
+- Stock and coupon use are reserved atomically (`lib/orders.ts`) and returned if the order is
+  cancelled.
+
+## Data model and indexes
+
+Schemas live in `src/models` and are the source of truth; `npm run db:indexes`
+(`database/indexes.js`) creates every index below on an empty database.
+
+| Collection | Key fields and constraints | Indexes | Written by |
+|---|---|---|---|
+| `users` | `email` unique, lower-case; `role` enum `user`/`admin`/`delivery`; `walletBalance` min 0; password and code hashes never returned (`PRIVATE_USER_FIELDS`) | `email` unique; `googleId`, `referralCode` unique sparse; `role` | sign-up; the user (profile); admins |
+| `orders` | `user` ref required; items with `productId` ref, server-side `price`, `quantity` ≥ 1; `totalAmount` ≥ 0; `status` enum of 5; `assignedTo` rider; `paymentProvider` + `paymentProviderId`; `isDemo` | `createdAt`; `status`+`createdAt`; `user`+`createdAt`; `assignedTo`+`status`; `paymentProvider`+`paymentProviderId` | checkout; admins; the assigned rider; the payment callback |
+| `products`, `categories` | `slug` unique; `price`, `discountPrice` (sale price), `stock`, `category` ref; categories nest 3 levels via `parentId` | `slug` unique; `category`; `stock`; text index on name/description; `createdAt`+`_id` | admins |
+| `coupons` | `code` unique, upper-case; `discountType` enum; `minOrderAmount`; `usageLimit` / `usedCount` | `code` unique; `isActive`+`expiryDate` | admins; `usedCount` by atomic `$inc` at checkout |
+| `news`, `heroslides`, `settings` | `slug` unique (news); `isPublished`; `isActive` + `order` | `slug` unique; `isPublished`+`createdAt`; `isActive`+`order` | admins |
+| `contactmessages` | `name` ≤ 80, `email` ≤ 254, `message` ≤ 3000, replies ≤ 5000; `subject` and `status` enums | `status`+`createdAt`; `createdAt` | the public form (rate-limited); admins |
+| `ratelimits` | `_id` (the limit key: IP or account id plus action), `count`, `expiresAt` | TTL on `expiresAt` | the server |
 
 ## Domain notes
 

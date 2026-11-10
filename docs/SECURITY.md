@@ -221,14 +221,14 @@ through: otherwise a made-up header gets a fresh per-IP limit on every request (
 `npm run audit:prod` must report 0 vulnerabilities for production dependencies before a
 release. Remaining advisories are in development-only lint tooling.
 
-Last run for 1.2.1 (2026-11-10, npm 11, Node 24):
+Last run for 1.2.2 (2026-11-10):
 
 ```text
 $ npm audit --omit=dev        # production dependencies
 found 0 vulnerabilities
 
-$ npm audit                   # everything, including development tools
-found 0 vulnerabilities
+$ npm audit                   # including development tools
+7 moderate severity vulnerabilities   # all one advisory, in lint tooling only (below)
 ```
 
 | Package | Version | Status |
@@ -236,13 +236,11 @@ found 0 vulnerabilities
 | `next` | 16.4.5 | No known advisories |
 | `next-auth` | 4.24.15 | No known advisories. Stays on 4.x on purpose: 4.24.15 is the current stable release on npm (`latest`), while Auth.js v5 is still a beta (`5.0.0-beta.32`). Update within 4.x for security fixes |
 | `mongoose` | 9.11.4 | No known advisories |
-| `nodemailer` | 10.3.1 | No known advisories. `overrides` makes `next-auth` use this same version instead of the older one it asks for |
-| `minimatch` (inside `@typescript-eslint/typescript-estree`, lint only) | 11.0.5 | Forced by `overrides`: the 10.x copy that `typescript-eslint` 8.72.2 brings has a moderate advisory (GHSA-g3hv-75wg-m249) |
+| `nodemailer` | 10.3.1 | No known advisories. The one `overrides` entry makes `next-auth` use this same version instead of the older 7.x it asks for |
+| `minimatch` 10.2.6, inside `typescript-eslint` 8.72.2 (lint only, never shipped) | dev | Moderate advisory GHSA-g3hv-75wg-m249, counted 7 times through the `typescript-eslint` packages. Fixed when `typescript-eslint` moves to minimatch 11.0.1 or later |
 
 - Every dependency in `package.json` is an exact version (no `^` ranges), and
   `package-lock.json` pins the whole tree: install with `npm ci`.
-- The two `overrides` above are the only ones. Remove the `minimatch` one once
-  `typescript-eslint` ships a fixed version.
 
 ## Known limitations
 

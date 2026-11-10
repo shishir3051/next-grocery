@@ -10,6 +10,8 @@ FreshBasket is a complete online grocery store for Bangladesh, built with **Next
 
 **Verified on the live demo** (2026-11-10, version 1.2.1): `npm run test:demo -- https://next-grocery-nine.vercel.app` passed **19/19 checks**: one-click login for all three roles with no password, a cash-on-delivery checkout as the customer, the admin assigning the Demo Rider, the rider marking it delivered, and every demo restriction (no real stock used, no real orders or settings changed, personal data masked).
 
+**Sample data on the live demo** (from `npm run db:setup`, checked 2026-11-10): 101 products in 11 categories, 2 active coupons (`WELCOME10`, `FRESH50`), 3 news articles, 3 hero banners, the three demo accounts and demo orders placed by visitors (deleted after 3 days).
+
 Set up your own copy, including the demo accounts and the optional live-demo mode, with [HowToSetup.md](HowToSetup.md).
 
 ## ✅ Features (datasheet)
@@ -33,7 +35,13 @@ Set up your own copy, including the demo accounts and the optional live-demo mod
 - Assigned orders with customer address, phone and map link; mark as delivered (cash orders become paid).
 
 ### Security
-Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers. Details: [docs/SECURITY.md](docs/SECURITY.md), including a **route access matrix** (every route and method, who may call it and the check that enforces it) and the **data access rules** per collection. `npm test` fails if any route loses its check.
+Rate-limited login and sign-up, hashed single-use codes, database-checked roles on every protected API, validated inputs, server-side pricing, verified payments, SSRF-safe image downloads and strict security headers.
+
+- **Access control:** every API route calls one guard from `src/lib/authGuard.ts` (`requireRole("admin")`, `requireRoleForWrite("admin")`, `requireRole("delivery", "admin")` or `requireUser()`), which reads the role from the database; public routes are read-only or rate-limited. The route-by-route table is in [AGENTS.md](AGENTS.md#access-control-by-route), and `tests/route-access.test.ts` fails if any route loses its guard.
+- **Payments:** SSLCommerz sends success, fail, cancel and IPN to one route, `src/app/api/payments/ssl-status/route.ts`. It confirms `val_id` with the SSLCommerz validation API, then requires the validated `tran_id`, amount (±0.01) and currency (BDT) to match the stored order before marking it paid; fail/cancel need an HMAC-signed link. Flow: [AGENTS.md](AGENTS.md#payments-sslcommerz-callback-and-ipn).
+- **Database:** Mongoose only (no SQL, no `$where`); ids are checked with `isObjectId()`, text with `requiredString()`, search with `escapeRegex()`; customers see only `{ user: auth.user.id }`, riders only `{ assignedTo: auth.user.id }`. Collections, constraints and indexes: [AGENTS.md](AGENTS.md#data-model-and-indexes).
+
+Full details: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## 🛠 Tech Stack
 
@@ -47,9 +55,22 @@ Rate-limited login and sign-up, hashed single-use codes, database-checked roles 
 | Email | Nodemailer (Gmail or any SMTP account via app password) |
 | UI | Tailwind CSS 4, Framer Motion, Lucide icons, Leaflet maps, Recharts |
 
+## 🔎 Quality checks (version 1.2.2, run 2026-11-10)
+
+| Check | Result |
+|---|---|
+| `npm audit --omit=dev` (everything that ships) | **found 0 vulnerabilities** |
+| `npm test` | **36/36 pass**: checkout totals, coupon rules, role checks, route access, order status, demo privacy |
+| `npm run test:demo -- https://next-grocery-nine.vercel.app` | **19/19 pass** on the live demo |
+| `npm run typecheck`, `npm run build` | pass |
+
+- **Dependencies:** every version in `package.json` is exact and `package-lock.json` pins the tree (`npm ci`). `next` 16.4.5, `react` 19.2.4, `mongoose` 9.11.4, `next-auth` 4.24.15. NextAuth 4 is the current stable release on npm; Auth.js v5 is still in beta, so the project stays on 4.x and takes security fixes within 4.x. Server-side sign-in is configured in one file (`src/lib/auth.ts`) and API role checks go through `src/lib/authGuard.ts`; pages use NextAuth's standard `useSession` / `signIn` hooks, which keeps a later move manageable. One `overrides` entry: `next-auth` uses the app's `nodemailer` 10.3.1 instead of the 7.x it asks for. The full `npm audit` also lists one moderate advisory in `minimatch` inside the lint tooling (`typescript-eslint`), which never ships.
+- **Node.js:** 22 LTS, version 22.18 or later, everywhere: `.nvmrc` (`22`), `engines` (`^22.18.0`) and the Docker image (`node:22-alpine`).
+- **Release history** ([CHANGELOG.md](CHANGELOG.md), back to the first release): 1.0.0 (2026-11-04) first release · 1.1.0 (2026-11-08) live demo mode and `/showcase` · 1.2.0 (2026-11-10) fast paginated admin products and a header cart · 1.2.1 (2026-11-10) route access matrix and tests · 1.2.2 (2026-11-10) review evidence in README and AGENTS.md.
+
 ## 🚀 Getting Started
 
-Requirements: Node.js 22 LTS, version 22.18 or newer (the same in `.nvmrc`, `package.json` `engines` and the Docker image), and a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough, including VPS and Docker, is in [HowToSetup.md](HowToSetup.md).
+Requirements: Node.js 22 LTS, version 22.18 or later (the same in `.nvmrc`, `package.json` `engines` and the Docker image), and a MongoDB database (MongoDB Atlas free tier works). The full clean-machine walkthrough is in [HowToSetup.md](HowToSetup.md). It covers installing Node.js and npm, MongoDB Atlas or a local MongoDB, `.env.local`, creating the database (indexes first, then sample data and demo accounts), the first admin login (`npm run promote-admin`), a VPS with Node.js, pm2 and an HTTPS proxy, a VPS with Docker Compose (optional bundled MongoDB), and branding: store name, logo, icons and the Tailwind colour tokens in `src/app/globals.css`.
 
 ```bash
 npm ci                         # install pinned dependencies
@@ -101,4 +122,4 @@ Safeguards:
 
 ---
 
-*FreshBasket v1.2.1*
+*FreshBasket v1.2.2*

@@ -3,6 +3,30 @@
 All notable changes to FreshBasket. Versions follow [Semantic Versioning](https://semver.org). Each release lists what was added,
 changed and fixed since the one below it, back to the first release, 1.0.0.
 
+| Version | Date | Summary |
+|---|---|---|
+| 1.2.2 | 2026-11-10 | Review evidence (access control, payment callback, data model, checks) in README and AGENTS.md; Node 22.x only |
+| 1.2.1 | 2026-11-10 | Route access matrix with an enforcing test; role and coupon tests; exact dependency pins |
+| 1.2.0 | 2026-11-10 | Admin products paginated and fast; product photos cached; header cart on every page |
+| 1.1.0 | 2026-11-08 | Live demo mode, `/showcase` page, one-click demo logins, automated tests |
+| 1.0.0 | 2026-11-04 | First release for sale |
+
+## [1.2.2] — 2026-11-10
+
+### Added
+- README "Quality checks" section: `npm audit --omit=dev` output, test and live-demo results,
+  dependency and NextAuth 4 status, Node.js version, release history, what the setup guide
+  covers and the sample data on the live demo.
+- AGENTS.md: access control by route, the SSLCommerz callback and IPN flow with file and line
+  references, and the data model with constraints and indexes.
+
+### Changed
+- `engines` is `^22.18.0` (Node 22.x), matching `.nvmrc` (`22`) and the Docker image
+  (`node:22-alpine`); every document now says the same.
+- Removed the `minimatch` override added in 1.2.1; `next-auth` → `nodemailer` is the only
+  override. Production dependencies still have 0 advisories; the lint tooling's `minimatch`
+  advisory is listed in docs/SECURITY.md.
+
 ## [1.2.1] — 2026-11-10
 
 ### Added

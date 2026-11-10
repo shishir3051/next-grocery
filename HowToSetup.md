@@ -4,7 +4,7 @@ Everything needed to go from this ZIP to a running store on a clean machine: ins
 create the database, log in as admin, and run it on a VPS with or without Docker.
 Cloud hosting on Vercel is covered in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-**This guide covers:** Node.js 22.18+ and npm (§1) · MongoDB Atlas or a local MongoDB (§1) ·
+**This guide covers:** Node.js 22 (22.18 or later) and npm (§1) · MongoDB Atlas or a local MongoDB (§1) ·
 `.env.local` settings (§3) · creating the database: indexes first, then sample data and demo
 accounts (§4) · first admin login (§4) · running locally (§5) · a VPS with Node.js, pm2 and a
 Caddy/nginx HTTPS proxy (§6A) · a VPS with Docker Compose and an optional bundled MongoDB (§6B) ·
@@ -19,7 +19,7 @@ optional features and troubleshooting.
 
 **Quick checklist** (each step is explained below):
 
-1. Node.js 22 LTS, version 22.18 or newer, then `npm ci` (exact versions from `package-lock.json`).
+1. Node.js 22 LTS (22.18 or later), then `npm ci` (exact versions from `package-lock.json`).
 2. `cp .env.example .env.local` and set `MONGODB_URI`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL` and `NEXTAUTH_SECRET`.
 3. Database, in this order: `npm run db:indexes`, then `npm run db:seed -- --demo-users` (`npm run db:setup` does both).
 4. First admin: register in the app, then `npm run promote-admin -- you@example.com` (or log in as the demo admin).
@@ -30,7 +30,7 @@ optional features and troubleshooting.
 
 | Tool | Version | Check |
 |---|---|---|
-| Node.js | 22 LTS, 22.18 or newer. The same version everywhere: `.nvmrc` (22), `engines` in `package.json` (>=22.18.0) and the Docker image (`node:22-alpine`). Newer majors such as 24 also work | `node -v` |
+| Node.js | 22 LTS, version 22.18 or later 22.x. The same everywhere: `.nvmrc` (`22`), `engines` in `package.json` (`^22.18.0`) and the Docker image (`node:22-alpine`) | `node -v` |
 | npm | 10 or newer (comes with Node) | `npm -v` |
 | MongoDB | MongoDB Atlas (free tier) **or** MongoDB 6+ on your machine/server | — |
 
@@ -124,7 +124,7 @@ Open http://localhost:3000.
 
 ## 6A. Production on a VPS with Node.js
 
-On an Ubuntu server (any Linux works) with Node.js 22.18+ installed:
+On an Ubuntu server (any Linux works) with Node.js 22 (22.18 or later) installed:
 
 ```bash
 git clone <your repository> freshbasket    # or upload and unzip the project
