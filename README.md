@@ -8,7 +8,7 @@ FreshBasket is a complete online grocery store for Bangladesh, built with **Next
 
 **Demo accounts** (live demo only, read-only except demo orders): `admin@demo.freshbasket.app` (admin), `customer@demo.freshbasket.app` (customer) and `rider@demo.freshbasket.app` (delivery rider). No password is needed on the live demo: use the one-click buttons. `npm run test:demo -- <url>` checks the whole flow and the role rules against a running demo (customer order, admin assigns the Demo Rider, rider delivers).
 
-**Verified on the live demo** (2026-11-10, version 1.2.1): `npm run test:demo -- https://next-grocery-nine.vercel.app` passed **19/19 checks**: one-click login for all three roles with no password, a cash-on-delivery checkout as the customer, the admin assigning the Demo Rider, the rider marking it delivered, and every demo restriction (no real stock used, no real orders or settings changed, personal data masked).
+**Verified on the live demo** (2026-11-10, version 1.2.2): `npm run test:demo -- https://next-grocery-nine.vercel.app` passed **19/19 checks**: one-click login for all three roles with no password, a cash-on-delivery checkout as the customer, the admin assigning the Demo Rider, the rider marking it delivered, and every demo restriction (no real stock used, no real orders or settings changed, personal data masked).
 
 **Sample data on the live demo** (from `npm run db:setup`, checked 2026-11-10): 101 products in 11 categories, 2 active coupons (`WELCOME10`, `FRESH50`), 3 news articles, 3 hero banners, the three demo accounts and demo orders placed by visitors (deleted after 3 days).
 
